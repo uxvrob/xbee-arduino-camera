@@ -49,7 +49,7 @@ void getImageSize(){
   
   uint8_t imgsize = cam.getImageSize();
   
-  Serial.print("ED+IMGS,");
+  Serial.print("AV+IMGS,");
   if (imgsize == VC0706_640x480) Serial.println(VC0706_640x480);
   if (imgsize == VC0706_320x240) Serial.println(VC0706_320x240);
   if (imgsize == VC0706_160x120) Serial.println(VC0706_160x120);
@@ -61,9 +61,9 @@ void getCameraVersion(){
   // Print out the camera version information (optional)  
   char *reply = cam.getVersion();
   if (reply == 0) {
-    Serial.println("ED+ERR,0x0000");
+    Serial.println("AV+ERR,0x0000");
   } else {
-    Serial.print("ED+CSV,");
+    Serial.print("AV+CSV,");
     Serial.println(reply);
   }
 }
@@ -71,9 +71,9 @@ void getCameraVersion(){
 void sendSnapshot(bool saveToSD = true){
   // Get snapshot
   if (!cam.takePicture()) 
-    Serial.println("ED+ERR,0x02");
+    Serial.println("AV+ERR,0x02");
   else 
-    Serial.println("ED+SNAP");
+    Serial.println("AV+SNAP");
   
   // Get the size of the image (frame) taken  
   uint16_t jpglen = cam.frameLength();
@@ -104,7 +104,7 @@ void sendSnapshot(bool saveToSD = true){
 
   
   //Signal the start of the image
-  Serial.println("+ED+CTRANS,");
+  Serial.print("+AV+CTRANS,");
   Serial.println(jpglen);
   Serial.println(">>>");
   
@@ -118,7 +118,7 @@ void sendSnapshot(bool saveToSD = true){
     // Output to Serial
     Serial.write(buffer,bytesToRead);
     // Carriage return termination 
-    Serial.println("");
+    //Serial.print("\r");
 
     
     imgFile.write(buffer, bytesToRead);
@@ -130,7 +130,7 @@ void sendSnapshot(bool saveToSD = true){
   
   imgFile.close();
   Serial.println("<<<");
-  Serial.print("ED+CTRANT,");
+  Serial.println("AV+CTRANT");
   
 }
 
@@ -139,20 +139,20 @@ void setup() {
   if(chipSelect != 10) pinMode(10, OUTPUT); // SS on Uno, etc.
 
   Serial.begin(115200);
-  Serial.println("ED+ON,node_id");
+  Serial.println("AV+ON,node_id");
   
   // see if the card is present and can be initialized:
   if (!SD.begin(chipSelect)) {
-    Serial.println("ED+ERR,0x01");
+    Serial.println("AV+ERR,0x01");
     // don't do anything more:
     //return;
   }  
   
   // Try to locate the camera
   if (cam.begin()) {
-    Serial.println("ED+CS,0x01");
+    Serial.println("AV+CS,0x01");
   } else {
-    Serial.println("ED+CS,0x00");
+    Serial.println("AV+CS,0x00");
     return;
   }
 
@@ -180,21 +180,24 @@ void loop(){
   
   if(Serial.available()>0){
     
-    if(Serial.peek() == 'E'){
+    if(Serial.peek() == 'A'){
       Serial.readBytesUntil('S',cmdBuf,8);
       
-      if(strcmp(cmdBuf, "ED+CGETS")){
+      if(strcmp(cmdBuf, "AV+CGETS")){
+        //Serial.println("cmd received");
         sendSnapshot();  
       }
      } 
   }
 
+  
   if((millis()-t)>SNAPSHOT_TIMER){
 
     t=millis();
+    Serial.println("Sending snapshot");
     sendSnapshot();
   }
-
+  
 
   //t.run();
   

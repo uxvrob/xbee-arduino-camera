@@ -1,12 +1,8 @@
 #%%
-from tkinter import *
-#%%
-from PIL import ImageTk, Image
-#import logging
+import logging
 import serial
 import serial.threaded
-#import threading
-import io
+import threading
 import time
 #%%
 
@@ -34,42 +30,6 @@ class AvProtocol(serial.threaded.LineReader):
         self._event_thread.name = 'av-event'
         self._event_thread.start()
         self.lock = threading.Lock()
- """
-        self.port = port
-        self.baudrate = baudrate
-        self.line = ""
-        self.imageEx = ImageTk.PhotoImage(Image.open("IMAGE00.jpg"))
-        
-        
-    def open(self):
-        self.ser = serial.Serial(port=self.port, baudrate = self.baudrate, timeout=2)
-        self.sio = io.TextIOWrapper(io.BufferedRWPair(self.ser, self.ser))
-        
-    def readLine(self):
-        if(self.ser.isOpen):
-            self.line = self.sio.readline()
-            
-    def write(self, data):
-        if(self.ser.isOpen):
-            b = bytes(data,'utf-8')
-            self.ser.write(b)
-    
-    def flush(self):
-        if(self.ser.isOpen):
-            self.ser.flush()
-
-    
-    def close(self):
-        self.ser.close()
-        
-        def stop(self):
-        """
-        #Stop the event processing thread, abort pending commands, if any.
-        """
-        self.alive = False
-        self.events.put(None)
-        self.responses.put('<exit>')
-     """ 
      
     def _run_event(self):
      
@@ -115,12 +75,17 @@ class AvProtocol(serial.threaded.LineReader):
                     else:
                         lines.append(line)
                 except queue.Empty:
-                    raise EDException('ED command timeout ({!r})'.format(command))
+                    raise AVException('AV command timeout ({!r})'.format(command))
 
 #%%
 
 if __name__ == '__main__':
-    import time
+    
+    from tkinter import *
+    from PIL import ImageTk, Image
+    import io
+    
+    timeout = 500
 
     bgColor = "#FFFFFF"
     
@@ -130,9 +95,8 @@ if __name__ == '__main__':
     root = Tk() #Makes the window
     root.wm_title("AVALON 0.1") #Makes the title that will appear in the top left
     root.config(bg = "#828481")
-    
-    #av = AvSerial(serPort, serBaudRate)
-    
+#%%
+
     class ServerNode(AvProtocol):
         def __init__(self):
             super(ServerNode, self).__init__()
@@ -146,19 +110,20 @@ if __name__ == '__main__':
             self.transport.serial.rts = False
             time.sleep(0.3)
             self.transport.serial.reset_input_buffer()
-
+#%%
         def handle_event(self, event):
             
             """Handle events and command responses starting with '+...'"""
             """and self._awaiting_response_for.startswith('AT+JRBD'):"""
+            
             if event.startswith('+AV+CTRANS'):                     
-                    #print ("Snapshot event received")
+                    print ("Snapshot event received")
                     img_size = event[10:10 + 3]
-                    #print ("Image size: {0}".format(img_size))
+                    print ("Image size: {0}".format(img_size))
                     
                     response = self.event_responses.get()
                     if(response.startswith(">>>")):
-                        startTime = int(round(time.time() * 1000))
+                        
                         
                         filename = 'IMAGE01.jpg'
                     
@@ -184,30 +149,14 @@ if __name__ == '__main__':
                                 break;
                 
                         with open(filename,'wb') as f:
-                            
+                            startTime = int(round(time.time() * 1000))
                             while(((int(round(time.time() * 1000))-startTime)<timeout)):
                                 response = self.event_responses.get()
                                 if(response.startswith("<<<")):
                                     break;
                                 f.write(response)
                                 
-                            f.flush
-                                
-                            
-                            
-                            
-                            #serialLog.insert(0.0, "Line: {0}".format(response))
-        
-                        if av.line.startswith(">>>"):
-                            print ("Start image transfer...")
-                            serialLog.insert(0.0, "Start image transfer...\n")
-                        elif av.line.startswith("<<<"):
-                        print ("Image transfer complete!\n")
-                        serialLog.insert(0.0, "Image transfer complete...\n")
-                    else:
-                        serialLog.insert(0.0, ">{0}".format(av.line))
-                        #f.write(av.line)
-                    
+                            f.flush()  
                     
                 
             else:
@@ -223,93 +172,7 @@ if __name__ == '__main__':
                 self._awaiting_response_for = None
                 return response
         
-        """
-        def takeSnapshot():
-        
-            serialLog.insert(0.0, "Take Snapshot cmd called!\n")
-            
-            # Open image file 
-            filename = 'IMAGE01.jpg'
-            
-            
-            
-            
-            # Increment Image file name by 1
-            for i in range(0,100):
-                d = list(filename)
-                        
-                d[5] = str(int(i/10))
-                d[6] = str(int(i%10))
-                
-                #serialLog.insert(0.0,"d[5]: {0}, d[6]: {1}".format(d[5],d[6]))
-                filename = ''.join(d)
-                
-                
-                # Check if file exists, if not break loop and         
-                try:
-                    #serialLog.insert(0.0, "Trying to open file: {0}\n".format(filename))
-                    f = open(filename)
-                    f.close()
-                except IOError:
-                    #serialLog.insert(0.0, "IO Error on: {0}\n".format(filename))
-                    break;
-        
-            serialLog.insert(0.0, "File to write: {0}\n".format(filename))
-            
-            return self.command_with_event_response("AV+CGETS")
-            
-            
-            with open(filename,'wb') as f:
-                
-                # Timeout of receiving image
-                timeout = 5000 # ms 
-                
-                imgSize = 0
-                
-                serialLog.insert(0.0, "Opening serial port\n")
-                av.open()
-                serialLog.insert(0.0, "Flushing serial\n")
-                av.flush()
-                
-                   
-                # clearing buffer
-                while(len(av.line)>0):
-                    av.readLine()
-                    serialLog.insert(0.0, "Buffer clear: {0}\n".format(av.line))
-                
-                av.write("AV+CGETS")
-                
-                startTime = int(round(time.time() * 1000))
-                
-                while(((int(round(time.time() * 1000))-startTime)<timeout) or av.line.startswith("<<<")):
-                    av.readLine()
-                    serialLog.insert(0.0, "Line: {0}".format(av.line))
-                    
-                    # start of image transfer
-                    
-                    if av.line.startswith("+AV+CTRANS,"):
-                        s = av.line.split(',')
-                        imgSize = int(s[1])
-                        serialLog.insert(0.0, "Image Size: {0}".format(imgSize))
-        
-                        if av.line.startswith(">>>"):
-                            print ("Start image transfer...")
-                            serialLog.insert(0.0, "Start image transfer...\n")
-                        elif av.line.startswith("<<<"):
-                        print ("Image transfer complete!\n")
-                        serialLog.insert(0.0, "Image transfer complete...\n")
-                    else:
-                        serialLog.insert(0.0, ">{0}".format(av.line))
-                        #f.write(av.line)
-                        
-                    f.flush()
-                    
-                av.close()
-            
-            filename='IMAGE00.jpg'
-            av.imageEx = ImageTk.PhotoImage(Image.open(filename))
-            
-            """
+       
     
     ser = serial.Serial(serPort, baudrate=115200, timeout=1)
     with serial.threaded.ReaderThread(ser, ServerNode) as ed_module:
