@@ -15,7 +15,7 @@
 //#include <SimpleTimer.h>
 
 #define node_id = 42134423
-#define ND_CMD_BUF_SIZE 80
+#define ND_CMD_BUF_SIZE 200
 
 #define IMG_BUF_SIZE 32
 
@@ -32,12 +32,14 @@ time_t t;
 
 
 // TODO: Finish implementing sending command buffer
-char cmdBuf[ND_CMD_BUF_SIZE];
-char paramBuf[ND_CMD_BUF_SIZE];
+String cmdBuf = "";
+boolean cmdComplete = false;
+
 
 // Serial and camera connections
 SoftwareSerial cameraconnection = SoftwareSerial(CAM_RX_PIN,CAM_TX_PIN);
 Adafruit_VC0706 cam = Adafruit_VC0706(&cameraconnection);
+
 
 // Writes a node command to serial 
 void printCommand(char* cmd, char* param){
@@ -70,15 +72,13 @@ void getCameraVersion(){
 
 void sendSnapshot(bool saveToSD = true){
   // Get snapshot
-  if (!cam.takePicture()) 
+  if (!cam.takePicture()) {
     Serial.println("AV+ERR,0x02");
-  else 
-    Serial.println("AV+SNAP");
+    return;
+  }
   
   // Get the size of the image (frame) taken  
   uint16_t jpglen = cam.frameLength();
-
-
 
   File imgFile;
   
@@ -86,60 +86,71 @@ void sendSnapshot(bool saveToSD = true){
   char filename[13];
   
   strcpy(filename, "IMAGE00.JPG");
-  
-  for (int i = 0; i < 1000; i++) {
-    filename[5] = '0' + i/10;
-    filename[6] = '0' + i%10;
-    // create if does not exist, do not open existing, write, sync after write
-    if (! SD.exists(filename)) {
-      break;
+
+  if(saveToSD){
+    for (int i = 0; i < 1000; i++) {
+      filename[5] = '0' + i/10;
+      filename[6] = '0' + i%10;
+      // create if does not exist, do not open existing, write, sync after write
+      if (! SD.exists(filename)) {
+        break;
+      }
     }
+    
+    // Open the file for writing
+    imgFile = SD.open(filename, FILE_WRITE);
   }
   
-  // Open the file for writing
-  imgFile = SD.open(filename, FILE_WRITE);
-
-  //int32_t time = millis();
-  //pinMode(8, OUTPUT);
-
-  
   //Signal the start of the image
+  Serial.print("{");
   Serial.print("+AV+CTRANS,");
-  Serial.println(jpglen);
-  Serial.println(">>>");
+  Serial.print(jpglen);
+  Serial.print("}");
   
   while (jpglen > 0) {
     
-    // read 32 bytes at a time;
+    // read IMG_BUF_SIZE bytes at a time;
     uint8_t *buffer;
     uint8_t bytesToRead = min(IMG_BUF_SIZE, jpglen); // change 32 to 64 for a speedup but may not work with all setups!
     buffer = cam.readPicture(bytesToRead);
 
-    // Output to Serial
+    if(saveToSD) imgFile.write(buffer, bytesToRead);
+    
+    Serial.print("{");
     Serial.write(buffer,bytesToRead);
-    // Carriage return termination 
-    //Serial.print("\r");
+    Serial.print("}");
 
+    time_t t = millis();
+    uint8_t counter = 0;
     
-    imgFile.write(buffer, bytesToRead);
-    
+    while((counter < 3) && ((millis()-t)<5000)){
+      
+      if(Serial.available()){
+        if((char)Serial.read() == '+'){
+          counter += 1;
+        }
+      }
+        
+    }
+
+    counter = 0;
     jpglen -= bytesToRead;
-    
   }
-
   
-  imgFile.close();
-  Serial.println("<<<");
-  Serial.println("AV+CTRANT");
+  if(saveToSD) imgFile.close();
+  Serial.print("{");
+  Serial.print("+++");
+  Serial.print("}");
   
 }
+
 
 void setup() {
   
   if(chipSelect != 10) pinMode(10, OUTPUT); // SS on Uno, etc.
 
   Serial.begin(115200);
-  Serial.println("AV+ON,node_id");
+  //Serial.println("AV+ON,node_id");
   
   // see if the card is present and can be initialized:
   if (!SD.begin(chipSelect)) {
@@ -150,7 +161,7 @@ void setup() {
   
   // Try to locate the camera
   if (cam.begin()) {
-    Serial.println("AV+CS,0x01");
+    Serial.println("{AV+CS,0x01}");
   } else {
     Serial.println("AV+CS,0x00");
     return;
@@ -171,37 +182,50 @@ void setup() {
   // Set the timer
   t = millis();
 
+  cmdBuf.reserve(ND_CMD_BUF_SIZE);
+
   
 }
 
 void loop(){
 
-  
-  
-  if(Serial.available()>0){
-    
-    if(Serial.peek() == 'A'){
-      Serial.readBytesUntil('S',cmdBuf,8);
+    if(cmdComplete){
+
+      cmdBuf.trim();
       
-      if(strcmp(cmdBuf, "AV+CGETS")){
-        //Serial.println("cmd received");
-        sendSnapshot();  
+      if(cmdBuf.equals("AV+JBRD"))
+        Serial.println("+RRBDRES:00FF214E2418");
+      else if(cmdBuf.equals("AV+CGETS"))
+        sendSnapshot(true);
+      else if(cmdBuf.equals("AV+JRES"))
+        Serial.println("ROK");
+      else if(cmdBuf.equals("OK")){
+        
       }
-     } 
+      else{
+        Serial.print("NOK: ");
+        Serial.println(cmdBuf);
+      }
+  
+      cmdBuf = "";
+      cmdComplete = false;
   }
 
-  
-  if((millis()-t)>SNAPSHOT_TIMER){
 
-    t=millis();
-    Serial.println("Sending snapshot");
-    sendSnapshot();
-  }
-  
-
-  //t.run();
-  
 }
 
+// Thread for processing serial events
+void serialEvent(){
+  while(Serial.available()){
+    char inChar = (char)Serial.read();
+    cmdBuf += inChar;
 
+    if(inChar == '\n'){
+      cmdComplete = true;
+    }
 
+    //Serial.print("RX: ");
+    //Serial.print(inChar);
+    //Serial.println("");
+  }
+}

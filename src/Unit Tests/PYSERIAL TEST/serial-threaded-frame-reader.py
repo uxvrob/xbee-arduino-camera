@@ -1,3 +1,4 @@
+#%%
 # -*- coding: utf-8 -*-
 """
 Created on Wed Aug 16 18:55:44 2017
@@ -8,6 +9,7 @@ Created on Wed Aug 16 18:55:44 2017
 
 from __future__ import print_function
 
+import os
 import sys
 sys.path.insert(0, '..')
 
@@ -26,13 +28,16 @@ class AVException(Exception):
     pass
 
 class AVFrameReader (serial.threaded.FramedPacket):
-    START = b'AV+['
-    STOP = b']+AV'
+    START = b'{'
+    STOP = b'}'
+    
+    ENCODING = 'utf-8'
+    UNICODE_HANDLING = 'replace'
     
     def __init__(self):
         super(AVFrameReader, self).__init__()
         #self.ENCODING = 'ASCII'
-        self.timeout=5
+        self.timeout=50
         self.alive = True
         self.responses = queue.Queue()
         self.events = queue.Queue()
@@ -42,25 +47,8 @@ class AVFrameReader (serial.threaded.FramedPacket):
         self._event_thread.start()
         self.lock = threading.Lock()
         self.trans_lock = False
-
-class AVLineReader(serial.threaded.LineReader):
-    
-    TERMINATOR = b'\r\n'
-    
-    def __init__(self):
-        super(AVLineReader, self).__init__()
-        #self.ENCODING = 'ASCII'
-        self.timeout=5
-        self.alive = True
-        self.responses = queue.Queue()
-        self.events = queue.Queue()
-        self._event_thread = threading.Thread(target=self._run_event)
-        self._event_thread.daemon = True
-        self._event_thread.name = 'av-event'
-        self._event_thread.start()
-        self.lock = threading.Lock()
-        self.trans_lock = False
-    
+        self.packet_event_length = 0
+        self.packet_response_length = 0
     def stop(self):
         """
         Stop the event processing thread, abort pending commands, if any.
@@ -79,36 +67,52 @@ class AVLineReader(serial.threaded.LineReader):
                 self.handle_event(self.events.get())
             except:
                 logging.exception('_run_event')
-
-    def handle_line(self, line):
-        """
-        Handle input from serial port, check for events.
-        """
-        #print('Line recevied: %r' % (line))
-        
-        """
-        if self.trans_lock == False:
-            if line.startswith('+'):
-                self.events.put(line)
-            else:
-                self.responses.put(line)
-        else:
-            self.responses.put(line.encode())
-            
-        """
-        
-        if line.startswith('+AV'):
-            self.events.put(line)
-        elif line.startswith('AV+'):
-            self.events.put(line)
-        else:
-            self.responses.put(line)
-
+                
     def handle_event(self, event):
         """
         Spontaneous message received.
         """
         print('event received:', event)
+        
+    def handle_packet(self,packet):
+        
+        if(self.trans_lock):
+            if(len(packet) == 3):
+                if(packet == b'+++'):
+                    self.trans_lock = False
+                    self.events.put('+AV+CTRANF')
+                    self.packet_event_length = self.packet_event_length + len(packet)
+                    if(self.packet_event_length < 100):
+                        print ("+++ received p: {} pack event length: {}".format(packet, self.packet_event_length))
+                    
+            else:
+                self.responses.put(packet)
+                self.packet_response_length = self.packet_response_length + len(packet)
+                if(self.packet_response_length < 100 or self.packet_response_length > 43000):
+                    print ("FALSE translock packet: {} pack response length: {}".format(packet, self.packet_response_length))
+        else:
+            try:
+                s = packet.decode()
+                print("Decoded Packet: {}".format(s))
+                if(s.startswith("+AV+CTRANS")):
+                    self.trans_lock = True
+                if(s.startswith("+AV")):
+                    self.events.put(packet.decode())
+                    self.packet_event_length = self.packet_event_length + len(packet)
+                    if(self.packet_event_length < 100):
+                        print ("+AV. Translock status: {} p: {} pack event length: {}".format(self.trans_lock, packet, self.packet_event_length))
+            except:
+                logging.critical("Exception Packet: {}".format(packet))
+                self.events.put(packet)
+
+        
+    def write_line(self, text):
+        """
+        Write text to the transport. ``text`` is a Unicode string and the encoding
+        is applied before sending ans also the newline is append.
+        """
+        # + is not the best choice but bytes does not support % or .format in py3 and we want a single write call
+        self.transport.write(text.encode('utf-8', 'replace') + b'\r\n')
     
     
     def command(self, command, response='OK'):
@@ -129,14 +133,11 @@ class AVLineReader(serial.threaded.LineReader):
                         lines.append(line)
                 except queue.Empty:
                     raise AVException('AV command timeout ({!r})'.format(command))
-                    
 
-
-                    
 if __name__ == '__main__':
     import time
 
-    class PAN1322(AVLineReader):
+    class PAN1322(AVFrameReader):
         """
         Example communication with PAN1322 BT module.
 
@@ -150,7 +151,7 @@ if __name__ == '__main__':
             self.event_responses = queue.Queue()
             self.img_queue = queue.Queue()
             self._awaiting_response_for = None
-            self.timeout=20
+            self.timeout=100
 
         def connection_made(self, transport):
             super(PAN1322, self).connection_made(transport)
@@ -161,19 +162,14 @@ if __name__ == '__main__':
 
         def handle_event(self, event):
             """Handle events and command responses starting with '+...'"""
-            #print("event: %s" % (event))
-            if event.startswith('+RRBDRES') and self._awaiting_response_for.startswith('AV+JRBD'):
+            print("event: %s" % (event))
                 
-                rev = event[9:9 + 12]
-                mac = ':'.join('{:02X}'.format(ord(x)) for x in rev[::-1])
-                self.event_responses.put(mac)
+            if event.startswith('+AV+CTRANS') and self._awaiting_response_for.startswith('AV+CGETS'):
+
+                img_size = int(event[11:])                    
+                expected_lines = int(img_size/64)+1;
                 
-            elif event.startswith('+AV+CTRANS') and self._awaiting_response_for.startswith('AV+CGETS'):
-                img_size = int(event[11:])
-                
-                expected_lines = int(img_size/64);
-                
-                print ("Expected Lines: {}".format(expected_lines))
+                print ("Size: {} Expected Lines: {}".format(img_size, expected_lines))
                 
                 # Open image file 
                 filename = 'IMAGE01.jpg'
@@ -196,44 +192,41 @@ if __name__ == '__main__':
                     except IOError:
                         #serialLog.insert(0.0, "IO Error on: {0}\n".format(filename))
                         break;
-                counter=0
+                
                 d_img_size = img_size
+                
+                
                 with open(filename,'wb') as f:
-                    self.trans_lock = True
+                    
                     while d_img_size > 0:
                         try:
-                            line = self.responses.get(timeout=self.timeout)
-                            s = line
-                            #print("%s -> %r" % (command, line))
-                            if d_img_size == 0:
-                                f.flush()
-                                f.close()
-                                break
+                            s = self.responses.get()
                             
-                            #if line.startswith('AV++'):
-                                #s = ''.join(e.strip('\r\n') for e in line[4:])
-                            s = line
+                            #print("%s -> %r" % (event, s))
                             
-                            if counter == 100:
-                                counter = 0
-                                #print ('line:{} line[3:]:{} line[4:]:{} '.format(line,line[3:],line[4:]))
-                                print ('s_len: {} f_len: {} img_size: {} d_img_size: {} expected_lines: {}'.format(len(s),f.tell(), img_size, d_img_size, expected_lines))
-                            #f.write(''.join(format(x,'b') for x in bytearray(s.encode())))
-                            f.write(s.encode())
-                            counter = counter + 1
+                            #if d_img_size > 45000 or d_img_size <= 6000:
+                                #print ('p: {}'.format(s))
+                                #print ('s_len: {} f_len: {} img_size: {} d_img_size: {}, packet_event_length: {}, packet_response_length: {}'.format(len(s),f.tell(), img_size, d_img_size, self.packet_event_length, self.packet_response_length))
+                            
+                            f.write(s)
+                            
                             d_img_size = d_img_size - len(s)
                             expected_lines = expected_lines-1
+                            self.write_line('+++')
+                            self.event_responses.put('TOK')
                         except queue.Empty:
+                        
+                            f.flush()
                             f.close()
                             #return ('Recv size: {} File size: {}'.format(img_size,f.tell()))
                         except:
+                            f.flush()
                             f.close()
-                            logging.critical('Unexpected error - Event: {!r} Error: {}'.format(event[:5],sys.exc_info()[0]))
+                            logging.critical('Unexpected error - Event: {!r} Error: {}'.format(event,sys.exc_info()))
                             #return
                     self.trans_lock=False
-                    self.event_responses.put('Recv size: {} File size: {}'.format(img_size,f.tell()))
-                    f.flush()
-                    f.close()
+                
+                self.event_responses.put('Recv size: {} d_img_size: {} exp_line: {} File size:'.format(img_size, d_img_size, expected_lines))
                 
             elif event.startswith('+AV+CTRANF'):
                 self.event_responses.put("TRANS_COMP")
@@ -244,9 +237,11 @@ if __name__ == '__main__':
             """Send a command that responds with '+...' line"""
             with self.lock:  # ensure that just one thread is sending commands at once
                 self._awaiting_response_for = command
-                #self.transport.write(command)
-                self.transport.write(('%s\r\n' % command).encode(self.ENCODING, self.UNICODE_HANDLING))
-                response = self.event_responses.get(timeout=self.timeout)
+                self.write_line(command)
+                response = 'TOK'
+                #self.transport.write(('%s\r\n' % command).encode(self.ENCODING, self.UNICODE_HANDLING))
+                while response == 'TOK':
+                    response = self.event_responses.get(timeout=self.timeout)                    
                 self._awaiting_response_for = None
                 return response
         
@@ -255,21 +250,15 @@ if __name__ == '__main__':
 
         def reset(self):
             self.command("AV+JRES", response='ROK')      # SW-Reset BT module
-
-        def get_mac_address(self):
-            # requests hardware / calibration info as event
-            return self.command_with_event_response("AV+JRBD")
-        
+            
         def getSnapshot(self):
             return self.command_with_event_response("AV+CGETS")
         
     
-    timeout = 20
+    timeout = 10
     #ser = serial.serial_for_url('spy://COM3', baudrate=115200, timeout=timeout)
     ser = serial.Serial('COM3', baudrate=115200, timeout=timeout)
     time.sleep(2)
-    with serial.threaded.ReaderThread(ser, PAN1322) as bt_module:
-        bt_module.timeout=timeout
-        #bt_module.reset()
-        #bt_module.getSnapshot()
-        print ("Snapshot received: {}".format(bt_module.getSnapshot()))
+    with serial.threaded.ReaderThread(ser, PAN1322) as av_module:
+        av_module.timeout=timeout
+        print ("Snapshot OK {}".format(av_module.getSnapshot()))
