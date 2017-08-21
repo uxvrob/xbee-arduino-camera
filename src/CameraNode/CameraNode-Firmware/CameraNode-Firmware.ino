@@ -1,8 +1,10 @@
 /***************************************************************
-* Camera Node firmware 
+* Camera Node firmware
 *
-* Before upload, flip switch to "USB" on the arduino Shield
-* After upload, flip switch to "micro"
+* @author Robbie Sharma robbie -at- rsconsulting.ca
+* @date August 21, 2017
+* @desc Before upload, flip switch to "USB" on the arduino Shield
+* 
 ***************************************************************/
 
 #include <Adafruit_VC0706.h>
@@ -11,39 +13,19 @@
 #include <SoftwareSerial.h>      
 #include <Time.h>  
 
-#define node_id = 42134423
-#define ND_CMD_BUF_SIZE 200
-
-#define IMG_BUF_SIZE 64
-
-// SD card chip select
-#define chipSelect 4
-
-// Camera pins
+#define ND_CMD_BUF_SIZE 200     // Command Buffer maximum size
+#define IMG_BUF_SIZE 64         // Byte batch of image to send via Serial
+#define SD_CHIP_SELECT_PIN 4    // SD card chip select
 #define CAM_RX_PIN 2
 #define CAM_TX_PIN 3
+#define SER_BAUD_RATE 115200    // Serial baud rate
 
-//Set the timer
-#define SNAPSHOT_TIMER 60*60*1000 //Every hour
-time_t t;
-
-
-// TODO: Finish implementing sending command buffer
+// Command buffer initialization
 String cmdBuf;
 boolean cmdComplete = false;
-
-
 // Serial and camera connections
 SoftwareSerial cameraconnection = SoftwareSerial(CAM_RX_PIN,CAM_TX_PIN);
 Adafruit_VC0706 cam = Adafruit_VC0706(&cameraconnection);
-
-
-// Writes a node command to serial 
-void sendCommand(char* cmd, char* param){
-  
-  
-
-}
 
 // Get image size from the camera 
 void getImageSize(){
@@ -55,18 +37,20 @@ void getImageSize(){
   if (imgsize == VC0706_320x240) Serial.println(VC0706_320x240);
   if (imgsize == VC0706_160x120) Serial.println(VC0706_160x120);
   
-
 }
 
 void getCameraVersion(){
+  
   // Print out the camera version information (optional)  
   char *reply = cam.getVersion();
+  
   if (reply == 0) {
     Serial.println("AV+ERR,0x0000");
   } else {
     Serial.print("AV+CSV,");
     Serial.println(reply);
   }
+  
 }
 
 void sendSnapshot(bool saveToSD = true){
@@ -131,15 +115,13 @@ void sendSnapshot(bool saveToSD = true){
 
 void setup() {
   
-  if(chipSelect != 10) pinMode(10, OUTPUT); // SS on Uno, etc.
+  if(SD_CHIP_SELECT_PIN != 10) pinMode(10, OUTPUT); // SS on Uno, etc.
 
-  Serial.begin(115200);
+  Serial.begin(SER_BAUD_RATE);
   
   // see if the card is present and can be initialized:
-  if (!SD.begin(chipSelect)) {
+  if (!SD.begin(SD_CHIP_SELECT_PIN)) {
     Serial.println("AV+ERR,0x01;");
-    // don't do anything more:
-    //return;
   }  
   
   // Try to locate the camera
@@ -156,52 +138,52 @@ void setup() {
   cam.setImageSize(VC0706_640x480);        // biggest
   //cam.setImageSize(VC0706_160x120);          // small
 
-  // Set the timer
-  t = millis();
-
   cmdBuf.reserve(ND_CMD_BUF_SIZE);
   
 }
 
 void loop(){
 
+    // Command state machine
+    // If a command string terminated by \n is received, process the string
+    
     if(cmdComplete){
 
       cmdBuf.trim();
       
-      if(cmdBuf.equals("AV+JBRD"))
-        Serial.println("+RRBDRES:00FF214E2418");
-      else if(cmdBuf.equals("AV+CGETS"))
+      if(cmdBuf.equals("AV+CGETS")){        // Send snapshot via Serial routine
         sendSnapshot(false);
-        //Serial.println("+AV+CTRANS,43000;");
-      else if(cmdBuf.equals("AV+JRES"))
+      }else if(cmdBuf.equals("AV+JRES")){   // Command to reset the arduino.  NOT IMPLEMENTED YET.
         Serial.println("ROK");
-      else if(cmdBuf.equals("OK")){
+      }else if(cmdBuf.equals("OK")){        // ACK type command
         
-      }
-      else{
+          
+      }else{                                // Invalid CMD received
         Serial.print("NOK: ");
         Serial.println(cmdBuf);
         Serial.write('\n');
       }
-  
+
+      // Reset command buffers
       cmdBuf = "";
       cmdComplete = false;
   }
 }
 
-// Thread for processing serial events
+// Thread for processing serial events.  A byte or char is added to a buffer until 
+// a newline character is received.
+
 void serialEvent(){
+  
   while(Serial.available()){
+    
     char inChar = (char)Serial.read();
     cmdBuf += inChar;
 
     if(inChar == '\n'){
       cmdComplete = true;
     }
-
-    //Serial.print("RX: ");
-    //Serial.print(inChar);
-    //Serial.println("");
+    
   }
+  
 }
