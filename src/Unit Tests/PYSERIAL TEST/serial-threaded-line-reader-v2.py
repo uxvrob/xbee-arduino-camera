@@ -27,12 +27,12 @@ except ImportError:
 class AVException(Exception):
     pass
 
-class AVFrameReader (serial.threaded.Packetizer):
-    #START = b'{'
-    #STOP = b'}'
+class AVFrameReader (serial.threaded.LineReader):
     
-    #ENCODING = 'ascii'
-    #UNICODE_HANDLING = 'ignore'
+    TERMINATOR = b'<<<'
+    
+    ENCODING = 'ascii'
+    UNICODE_HANDLING = 'ignore'
     
     def __init__(self):
         super(AVFrameReader, self).__init__()
@@ -40,7 +40,6 @@ class AVFrameReader (serial.threaded.Packetizer):
         self.timeout=50
         self.alive = True
         self.responses = queue.Queue()
-        self.img_data = queue.Queue()
         self.events = queue.Queue()
         self._event_thread = threading.Thread(target=self._run_event)
         self._event_thread.daemon = True
@@ -75,7 +74,7 @@ class AVFrameReader (serial.threaded.Packetizer):
         """
         print('event received:', event)
         
-    def handle_packet(self,packet):
+    def handle_line(self,line):
         
         if(self.trans_lock):
             if(len(packet) == 3):
@@ -93,11 +92,11 @@ class AVFrameReader (serial.threaded.Packetizer):
                 
         else:
             try:
-                s = packet.decode(self.ENCODING, self.UNICODE_HANDLING)
+                s = packet.decode()
                 print("Decoded Packet: {}".format(s))
-                if(s.startswith(b"+AV+CTRANS")):
+                if(s.startswith("+AV+CTRANS")):
                     self.trans_lock = True
-                if(s.startswith(b"+AV")):
+                if(s.startswith("+AV")):
                     self.events.put(packet.decode())
                     self.packet_event_length = self.packet_event_length + len(packet)
                     """
@@ -106,9 +105,9 @@ class AVFrameReader (serial.threaded.Packetizer):
                     """
             except:
                 logging.critical("Exception Packet: {}".format(packet))
-                #self.events.put(packet)
-                self.stop()
-                exit()
+                self.events.put(packet)
+        self.events.task_done()
+        self.events.task_done()
         
     def write_line(self, text):
         """

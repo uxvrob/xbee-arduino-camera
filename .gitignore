@@ -29,3 +29,5 @@ _ReSharper*/
 [Tt]est[Rr]esult*
 #Files to ignore
 Smartifi_overview*.docx
+lib/pyExamples/
+IMAGE*.jpg

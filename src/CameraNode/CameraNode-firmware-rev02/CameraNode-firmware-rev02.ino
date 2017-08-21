@@ -10,7 +10,7 @@
 #include <SD.h>
 #include <SoftwareSerial.h>      
 #include <Time.h>  
-//#include <ModbusMaster.h>
+#include <Firmata.h>
 //#include "Timer.h"
 //#include <XBee.h>
 //#include <SimpleTimer.h>
@@ -34,7 +34,7 @@ time_t t;
 
 
 // TODO: Finish implementing sending command buffer
-String cmdBuf;
+char sendBuffer[;
 boolean cmdComplete = false;
 
 
@@ -126,42 +126,43 @@ void sendSnapshot(bool saveToSD = true){
 
     if(ackFlag){      
       buffer = cam.readPicture(bytesToRead);
-      if(!err){
-        Serial.write(buffer,bytesToRead);
-        ackFlag = false;
-      }
+      ackFlag = false;
+    }
+    if(!err){
+      
+      Serial.write(buffer,bytesToRead);
+      Serial.write('\0');
     }
 
     time_t t = millis();
     
-    while((millis()-t)<=500){
+    while((millis()-t)<500 && !err){
       
-      if(Serial.available() && !err){
+      if(Serial.available()){
         char c = (char)Serial.read();
-        if(c == '&'){
+        if(c == '+'){
           //Serial.println("SUCCESS ACK");
           ackFlag = true;
-          err = false;
         }
-        else if(c == '*'){
+        else if(c == '-'){
           //Serial.println("FAIL ACK");
           ackFlag = false;
-          err = false;
+
         }
         else{ 
-          ackFlag = true;
-          err = true;
-          
+          failAckCounter++;
+          continue;
         }
-        break;
-      } 
-      else {
-        err = true;
         break;
       }
     }
 
-    
+    // Stopping serial transmission due to excessive ack fails
+    if(failAckCounter > 1000){
+      err = true;
+      ackFlag = true;
+      //Serial.println("Too many ack failures..."); 
+    }
     
     if(ackFlag){
       //Serial.println("writing to imgFile");
@@ -169,17 +170,21 @@ void sendSnapshot(bool saveToSD = true){
       successAckCounter++;
       jpglen -= bytesToRead;
     }
-
+    else{
+      //Serial.print("ack fail: ");
+      //Serial.println(failAckCounter);
+      failAckCounter++;
+    }
   }
   if(!err){
     //Serial.print("{");
-    Serial.print("+AV+CTRANF");
+    Serial.print("+++\0");
     //Serial.print("}");
   }
   else
     Serial.println("+AV+ERR,SERIAL_FAIL");
 
- 
+  
   
   if(saveToSD){
     imgFile.close();
@@ -188,10 +193,22 @@ void sendSnapshot(bool saveToSD = true){
   
 }
 
+void snapshotCallback(byte command, byte byteCount, byte *arrayPointer){
+  
+}
+
 
 void setup() {
+
+  // Firmata setup
+
+  Firmata.setFirmwareVersion(FIRMATA_MAJOR_VERSION, FIRMATA_MINOR_VERSION);
+  Firmata.attach(ANALOG_MESSAGE, analogWriteCallback);
+  Firmata.begin();
   
   if(chipSelect != 10) pinMode(10, OUTPUT); // SS on Uno, etc.
+
+  
 
   Serial.begin(115200);
   //Serial.println("AV+ON,node_id");
@@ -250,7 +267,7 @@ void loop(){
       else{
         Serial.print("NOK: ");
         Serial.println(cmdBuf);
-        Serial.write('\n');
+        Serial.write('\0');
       }
   
       cmdBuf = "";
