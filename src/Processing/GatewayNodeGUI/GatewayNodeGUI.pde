@@ -1,45 +1,64 @@
+/***************************************************************
+* Gateway Node GUI 
+*
+* @author Robbie Sharma robbie -at- rsconsulting.ca
+* @date August 21, 2017
+* @desc GUI for direct file transfer from GUI
+* 
+***************************************************************/
+
 import interfascia.*;
 import processing.serial.*;
 
-import java.io.DataOutputStream;
-import java.io.BufferedOutputStream;
-import java.io.FileOutputStream;
+
+/* Review these links for binary file processing
+ *
+ * https://forum.processing.org/one/topic/serial-transfer-jpeg-from-arduino.html
+ * https://forum.processing.org/one/topic/read-and-write-of-binary-files.html
+ *
+ */
+ 
+//import java.io.DataOutputStream;
+//import java.io.BufferedOutputStream;
+//import java.io.FileOutputStream;
 
 // Window parameters
 int bgColor = 200;
 
-// Btn Parameters
+// Button Parameters
 int btnWidth = 100;
 int btnHeight = 30;
 
-// GUI Variables
+// GUI Controls
 GUIController c;
 IFLookAndFeel defaultLook;
 IFButton getSnapshotBtn;
 IFProgressBar progress;
 IFLabel progressLbl;
-
+String outputText ="";
 
 // File IO Variables
 
-  FileOutputStream fstream; 
-  BufferedOutputStream bstream; 
-  DataOutputStream dstream; 
+//FileOutputStream fstream; 
+//BufferedOutputStream bstream; 
+//DataOutputStream dstream; 
 
-// Serial variables
+// Serial parameters
 final int BUF_SIZE = 64;
-Serial gwSerial;                       // The serial port
+final int SER_BAUD_RATE = 115200;
+Serial gwSerial;                       
 
+// Command Buffer
 String cmdBuf = "";
 boolean cmdComplete = false;
 boolean imgRead;
+
+// Snapshot Image File Parameters
 
 int totalFileSize = 0;
 int currentFileSize = 0;
 int extraBytes = 0;
 int lastcount = -1;
-
-String outputText ="";
 
 PImage imgFile;
 OutputStream imgWriter;
@@ -53,7 +72,7 @@ void setup() {
   
   // Serial initialization
   
-  gwSerial = new Serial(this, Serial.list()[0], 115200);
+  gwSerial = new Serial(this, Serial.list()[0], SER_BAUD_RATE);
   
   // Create GUI
 
@@ -94,8 +113,10 @@ void setup() {
 }
 
 
+// Main program draw loop 
 
 void draw() {
+  
   background(200);
 
   float imageReduction = 0.15;
@@ -103,6 +124,7 @@ void draw() {
   int imgSizeWidth = int(imgFile.width*imageReduction);
   int imgSizeHeight = int(imgFile.height*imageReduction);
   
+  // Create image file 
   image(imgFile, int(width-imgSizeWidth*1.5), int(height-imgSizeHeight*1.05), imgSizeWidth, imgSizeHeight);
   
   textSize(12);
@@ -111,12 +133,15 @@ void draw() {
   fill(50);
   
   totalFileSize = (totalFileSize == 0)?1:totalFileSize;
-  //float progValue = norm(currentFileSize, 0,totalFileSize);
   
+  // File transfer progress status
   progress.setProgress(norm(currentFileSize, 0,totalFileSize));
   progressLbl.setLabel("Transfer Progress "+str(round(progress.getProgress()*100))+"%"+" File Size: "+str(float(totalFileSize/1024))+"kb or "+str(totalFileSize)+" bytes");
+  
+  // Filesize to console
   if(imgRead) println("CurrentFileSize: "+str(currentFileSize)+" TotalFileSize: "+str(totalFileSize));
   
+  //
   if(cmdComplete){
     
     if(!imgRead){
@@ -128,18 +153,18 @@ void draw() {
      if(m != null) {
        String[] tkn = splitTokens(m[1], ", ");
        
-       if(match(tkn[0],"CS") != null) outputText = "Initialized";
+       if(match(tkn[0],"CS") != null) outputText = "Camera is Active";      // AV+CS,0x01;
        
-       else if(match(tkn[0],"CTRANS") != null) {
+       else if(match(tkn[0],"CTRANS") != null) {                           // AV+CTRANS,<img_file_size_in_bytes>;  Start image transfer
          totalFileSize = int(tkn[1]);
          outputText = "Getting Image..." ;
          imgRead = true;
-       }
-       else if(match(tkn[0],"CTRANF")!=null){
-         outputText = "Image transfer complete";
-       }
        
-       //outputText = m[1];
+     }else if(match(tkn[0],"CTRANF")!=null){                              // AV+CTRANF; Image transfer complete
+         outputText = "Image transfer complete";
+         imgRead = false;
+     }
+      
        println("Match: "+m[1]);
      }
     }
@@ -154,10 +179,12 @@ void snapshotCmd(){
   
   gwSerial.write("AV+CGETS");
   gwSerial.write(10); 
+  
   String filename = sketchPath()+"/"+"IMAGE01.jpg";
   imgWriter = createOutput(filename);
   currentFileSize =0;
   totalFileSize=0;
+  
   /*
   try{
     fstream = new FileOutputStream(filename);
@@ -182,12 +209,15 @@ void serialEvent(Serial s){
 
     if(cmdComplete) return;
     
+    // If image reading flag active, read serial TX as byte stream
+    
     if(imgRead){
       
       if(currentFileSize < totalFileSize){
       
             try{
               imgWriter.write(s.read());
+              //dstream.write(s.read());
             }
             catch(IOException e){
               println("IOException");
@@ -199,7 +229,7 @@ void serialEvent(Serial s){
          
             
        }
-     else{
+       else{
       
 
        println("File transfer complete. Current File size: "+str(currentFileSize)+" bytes");
@@ -208,6 +238,7 @@ void serialEvent(Serial s){
        try{
          imgWriter.flush();
          imgWriter.close();
+         //dstream.close();
        }
        catch(IOException e){
          println("Exception on close");
