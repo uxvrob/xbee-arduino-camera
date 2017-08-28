@@ -62,7 +62,6 @@ int lastcount = -1;
 
 PImage imgFile;
 OutputStream imgWriter;
-String recvImgFileName="";
 
 
 void setup() {
@@ -111,9 +110,6 @@ void setup() {
   
   c.setLookAndFeel(defaultLook);
   
-  println("Image width x height: "+str(imgFile.width)+" x " + str(imgFile.height));
-  println("Adjusted image width x height: "+str(imgFile.width*0.15)+" x " + str(imgFile.height*0.15));
-  
 }
 
 
@@ -123,12 +119,10 @@ void draw() {
   
   background(200);
 
-  //float imageReduction = 0.15;
+  float imageReduction = 0.15;
   
-  int imgSizeWidth =  640;
-  int imgSizeHeight = 480;
-  
-  
+  int imgSizeWidth = int(imgFile.width*imageReduction);
+  int imgSizeHeight = int(imgFile.height*imageReduction);
   
   // Create image file 
   image(imgFile, int(width-imgSizeWidth*1.5), int(height-imgSizeHeight*1.05), imgSizeWidth, imgSizeHeight);
@@ -144,6 +138,10 @@ void draw() {
   progress.setProgress(norm(currentFileSize, 0,totalFileSize));
   progressLbl.setLabel("Transfer Progress "+str(round(progress.getProgress()*100))+"%"+" File Size: "+str(float(totalFileSize/1024))+"kb or "+str(totalFileSize)+" bytes");
   
+  // Filesize to console
+  //if(imgRead) println("CurrentFileSize: "+str(currentFileSize)+" TotalFileSize: "+str(totalFileSize));
+  
+  //
   if(cmdComplete){
     
     if(!imgRead){
@@ -155,22 +153,17 @@ void draw() {
      if(m != null) {
        String[] tkn = splitTokens(m[1], ", ");
        
-       if(match(tkn[0],"CS") != null){ 
-         outputText = "Connected to Gateway";      // AV+CS,0x01;
+       if(match(tkn[0],"CS") != null) outputText = "Camera is Active";      // AV+CS,0x01;
        
-       }else if(match(tkn[0],"CTRANS") != null) {                           // AV+CTRANS,<img_file_size_in_bytes>;  Start image transfer
+       else if(match(tkn[0],"CTRANS") != null) {                           // AV+CTRANS,<img_file_size_in_bytes>;  Start image transfer
          totalFileSize = int(tkn[1]);
          outputText = "Getting Image..." ;
          imgRead = true;
        
-       }else if(match(tkn[0],"DEBUG") != null){
-         
-         if(match(tkn[1],"TAKESNAP_SD") != null){
-           println("Snapshot taken.  Arduino filename: "+tkn[2]+" Filesize: "+tkn[3]+" bytes");
-           
-         }
-         
-       }
+     }else if(match(tkn[0],"CTRANF")!=null){                              // AV+CTRANF; Image transfer complete
+         outputText = "Image transfer complete";
+         imgRead = false;
+     }
       
        println("Match: "+m[1]);
      }
@@ -185,26 +178,30 @@ void draw() {
 void snapshotCmd(){
   
   gwSerial.write("AV+CGETS");
+  //gwSerial.write("AV+CSEND");
   gwSerial.write(10); 
   
-  recvImgFileName = String.valueOf(year());
-  recvImgFileName += String.valueOf(month());
-  recvImgFileName += String.valueOf(day());
-  recvImgFileName += "-";
-  recvImgFileName += String.valueOf(hour());
-  recvImgFileName += String.valueOf(minute());
-  recvImgFileName += ".jpg";
-  
-  imgWriter = createOutput(sketchPath()+"/"+recvImgFileName);
+  String filename = sketchPath()+"/"+"IMAGE_RECEIVED.jpg";
+  imgWriter = createOutput(filename);
   currentFileSize =0;
   totalFileSize=0;
-
+  
+  /*
+  try{
+    fstream = new FileOutputStream(filename);
+    bstream = new BufferedOutputStream(fstream);
+    dstream = new DataOutputStream(bstream);
+  }
+  catch(Exception e){
+    println("Exception " + e);
+    
+  }
+  */
   
 }
 
 void actionPerformed (GUIEvent e) {
   if (e.getSource() == getSnapshotBtn) {
-    outputText = "Waiting for image data...";
     snapshotCmd();
   } 
 }
@@ -217,8 +214,12 @@ void serialEvent(Serial s){
     
     if(imgRead){
       
+      
+        
         if((totalFileSize-currentFileSize) > 0 ){
-    
+          
+            
+      
             try{
               
               int bytesToRead = min(64, (totalFileSize-currentFileSize));
@@ -229,39 +230,34 @@ void serialEvent(Serial s){
               
               currentFileSize+=buffer.length;
               buffer = null;
-
+              
             }
             catch(IOException e){
               println("IOException");
             }
             
             
-            if(((currentFileSize % 128) == 0) && currentFileSize > 40000)
-              println(" Filesize: "+str(currentFileSize)+" Current min: "+str(min(64, (totalFileSize-currentFileSize))));  
+            
+            println(" Filesize: "+str(currentFileSize)+" Current min: "+str(min(64, (totalFileSize-currentFileSize))));  
          
+       }
+       else{
+      
+
+         println();
+         imgRead = false;
        
-          if((totalFileSize-currentFileSize) == 0){
-             
-             try{
-               imgWriter.flush();
-               imgWriter.close();
-             }
-             catch(IOException e){
-               println("Exception on file close");
-               imgRead = false;
-               return;
-             }
-             
-             outputText = "Transfer complete. File:"+recvImgFileName;
-             
-             imgFile = loadImage(sketchPath() + "/" + recvImgFileName);
-             
-             println("New image width x height: "+str(imgFile.width)+" x " + str(imgFile.height));
-             
-             imgRead = false;
+         try{
+           imgWriter.flush();
+           imgWriter.close();
+         }
+         catch(IOException e){
+           println("Exception on file close");
+         }
+         outputText = "File transfer complete. Current File size: "+str(currentFileSize)+" bytes";
+         cmdComplete = true;
      
-          }
-    }
+      }
     }
    else{
       char inChar = s.readChar();
