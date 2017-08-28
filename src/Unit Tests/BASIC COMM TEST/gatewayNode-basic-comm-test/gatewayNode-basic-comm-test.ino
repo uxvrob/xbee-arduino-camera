@@ -11,11 +11,14 @@ void setup() {
 void loop() {
   
   if (Serial.available() > 0){
+    Serial.read
     Serial.print("RX: ");
     while(Serial.available()>0){
-      Serial.write(Serial.read());
+      Serial.read();
     }
     Serial.println("");
   }
+
+  
 
 }

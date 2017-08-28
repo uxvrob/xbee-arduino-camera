@@ -139,7 +139,7 @@ void draw() {
   progressLbl.setLabel("Transfer Progress "+str(round(progress.getProgress()*100))+"%"+" File Size: "+str(float(totalFileSize/1024))+"kb or "+str(totalFileSize)+" bytes");
   
   // Filesize to console
-  if(imgRead) println("CurrentFileSize: "+str(currentFileSize)+" TotalFileSize: "+str(totalFileSize));
+  //if(imgRead) println("CurrentFileSize: "+str(currentFileSize)+" TotalFileSize: "+str(totalFileSize));
   
   //
   if(cmdComplete){
@@ -178,9 +178,10 @@ void draw() {
 void snapshotCmd(){
   
   gwSerial.write("AV+CGETS");
+  //gwSerial.write("AV+CSEND");
   gwSerial.write(10); 
   
-  String filename = sketchPath()+"/"+"IMAGE01.jpg";
+  String filename = sketchPath()+"/"+"IMAGE_RECEIVED.jpg";
   imgWriter = createOutput(filename);
   currentFileSize =0;
   totalFileSize=0;
@@ -213,10 +214,25 @@ void serialEvent(Serial s){
     
     if(imgRead){
       
-      if(currentFileSize < totalFileSize){
+      
+        
+        if((totalFileSize-currentFileSize) > 0 ){
+          
+            
       
             try{
-              imgWriter.write(s.read());
+              
+              int bytesToRead = min(64, (totalFileSize-currentFileSize));
+              byte[] buffer = new byte[bytesToRead];
+              
+              buffer = s.readBytes(bytesToRead);
+              imgWriter.write(buffer);
+              
+              currentFileSize+=buffer.length;
+              buffer = null;
+              
+              //imgWriter.write(s.read());
+              //currentFileSize++;
               //dstream.write(s.read());
             }
             catch(IOException e){
@@ -224,28 +240,27 @@ void serialEvent(Serial s){
             }
             
             
-            currentFileSize++;
-            //println(" Filesize: "+str(currentFileSize));  
-         
             
+            println(" Filesize: "+str(currentFileSize)+" Current min: "+str(min(64, (totalFileSize-currentFileSize))));  
+         
        }
        else{
       
 
-       println("File transfer complete. Current File size: "+str(currentFileSize)+" bytes");
-       imgRead = false;
+         println();
+         imgRead = false;
+       
+         try{
+           imgWriter.flush();
+           imgWriter.close();
+         }
+         catch(IOException e){
+           println("Exception on file close");
+         }
+         outputText = "File transfer complete. Current File size: "+str(currentFileSize)+" bytes";
+         cmdComplete = true;
      
-       try{
-         imgWriter.flush();
-         imgWriter.close();
-         //dstream.close();
-       }
-       catch(IOException e){
-         println("Exception on close");
-       }
-       cmdComplete = true;
-     
-    }
+      }
     }
    else{
       char inChar = s.readChar();
