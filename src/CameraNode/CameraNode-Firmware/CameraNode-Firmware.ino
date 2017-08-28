@@ -127,7 +127,7 @@ void takeSnapshotSaveToSD(image_file_t &ift){
   ift.uSize = jpglen;
 
 
-  if(debugOn) Serial.print("AV+DEBUG,GEN_FILENAME,"+String(ift.szName)+","+String(ift.uSize)+";");
+  if(debugOn) Serial.print("AV+DEBUG,TAKESNAP_SD,"+String(ift.szName)+","+String(ift.uSize)+";");
   
   
   // Open the file for writing
@@ -194,8 +194,6 @@ void sendSnapshotFile(char* filename){
     
   }
   
-  //Serial.print("AV+CTRANF;"); 
-  
   imgFile.close();
   
 
@@ -245,7 +243,6 @@ void loop(){
       if(cmdBuf.equals("AV+CGETS")){        // Send snapshot via Serial routine
         
         takeSnapshotSaveToSD(ift);
-        Serial.println("IFT szname: "+String(ift.szName));
         sendSnapshotFile(ift.szName);
 
       }else if(cmdBuf.equals("AV+SNAP")){
@@ -261,6 +258,10 @@ void loop(){
       }else if(cmdBuf.equals("AV+CSEND")){
       
         sendSnapshotFile("IMAGE00.jpg");   
+
+      }else if(cmdBuf.equals("AV+DEBUGON")){
+
+        debugOn = true;
       
       }else if(cmdBuf.equals("AV+JRES")){   // Command to reset the arduino.  NOT IMPLEMENTED YET.
       
