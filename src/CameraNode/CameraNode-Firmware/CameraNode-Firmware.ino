@@ -271,9 +271,9 @@ void loop(){
         
           
       }else{                                // Invalid CMD received
-        Serial.print("NOK: ");
-        Serial.println(cmdBuf);
-        Serial.write('\n');
+        //Serial.print("NOK: ");
+        //Serial.println(cmdBuf);
+        //Serial.write('\n');
       }
 
       // Reset command buffers
