@@ -2,7 +2,7 @@
 #include <SoftwareSerial.h>
 
 // RX,  TX
-SoftwareSerial brg(8,9);
+SoftwareSerial brg(A0,A1); //RX,TX
 
 void setup() {
   Serial.begin(57600);
@@ -11,19 +11,20 @@ void setup() {
     ;
   }
 
-  Serial.println("Success");
+  Serial.println("USB Serial open...");
   
-  brg.begin(115200);
+  brg.begin(57600);
 
 }
 
 void loop() {
   
   if(brg.available()>0){
-    Serial.write((uint8_t)brg.read());
+    Serial.write(brg.read());
+    
   }
   if(Serial.available() > 0){
-    brg.write((uint8_t)Serial.read());
+    brg.write(Serial.read());
   }
  
 }

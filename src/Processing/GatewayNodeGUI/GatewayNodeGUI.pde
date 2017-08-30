@@ -10,18 +10,6 @@
 import interfascia.*;
 import processing.serial.*;
 
-
-/* Review these links for binary file processing
- *
- * https://forum.processing.org/one/topic/serial-transfer-jpeg-from-arduino.html
- * https://forum.processing.org/one/topic/read-and-write-of-binary-files.html
- *
- */
- 
-//import java.io.DataOutputStream;
-//import java.io.BufferedOutputStream;
-//import java.io.FileOutputStream;
-
 // Window parameters
 int bgColor = 200;
 
@@ -39,13 +27,11 @@ String outputText ="";
 
 // File IO Variables
 
-//FileOutputStream fstream; 
-//BufferedOutputStream bstream; 
-//DataOutputStream dstream; 
 
 // Serial parameters
+final String SER_PORT = "COM5";
 final int BUF_SIZE = 64;
-final int SER_BAUD_RATE = 115200;
+final int SER_BAUD_RATE = 57600;
 Serial gwSerial;                       
 
 // Command Buffer
@@ -70,10 +56,15 @@ void setup() {
   size(1200, 600);
   frameRate(60);
   background(bgColor);
-  
+ 
   // Serial initialization
   
-  gwSerial = new Serial(this, Serial.list()[0], SER_BAUD_RATE);
+  
+  // Uncomment next two lines of code to determine COM port element in Serial array
+  // printArray(Serial.list());
+  // exit();
+  
+  gwSerial = new Serial(this, Serial.list()[2], SER_BAUD_RATE);
   
   // Create GUI
 
@@ -252,7 +243,7 @@ void serialEvent(Serial s){
                return;
              }
              
-             outputText = "Transfer complete. File:"+recvImgFileName;
+             outputText = "Transfer complete. File: "+recvImgFileName;
              
              imgFile = loadImage(sketchPath() + "/" + recvImgFileName);
              
@@ -268,7 +259,7 @@ void serialEvent(Serial s){
       cmdBuf += str(inChar);
       
       if(inChar == ';'){
-          cmdComplete = true; 
+          cmdComplete = true;   
       }
       
       if(cmdBuf.length() > 100){

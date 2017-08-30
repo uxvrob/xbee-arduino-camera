@@ -18,7 +18,7 @@
 #define SD_CHIP_SELECT_PIN 4    // SD card chip select
 #define CAM_RX_PIN 2
 #define CAM_TX_PIN 3
-#define SER_BAUD_RATE 115200    // Serial baud rate
+#define SER_BAUD_RATE 57600    // Serial baud rate
 
 boolean debugOn = true;
 
