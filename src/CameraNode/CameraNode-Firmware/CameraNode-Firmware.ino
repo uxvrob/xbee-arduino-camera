@@ -19,6 +19,7 @@
 #define CAM_RX_PIN 2
 #define CAM_TX_PIN 3
 #define SER_BAUD_RATE 57600    // Serial baud rate
+#define TRANSMISSION_DELAY 1000 // in microseconds (us)
 
 boolean debugOn = true;
 
@@ -74,7 +75,9 @@ void printDirectory(File dir, int numTabs) {
     for (uint8_t i = 0; i < numTabs; i++) {
       Serial.print('\t');
     }
+    
     Serial.print(entry.name());
+    delayMicroseconds(TRANSMISSION_DELAY);
     if (entry.isDirectory()) {
       Serial.println("/");
       printDirectory(entry, numTabs + 1);
@@ -83,6 +86,7 @@ void printDirectory(File dir, int numTabs) {
       Serial.print("\t\t");
       Serial.println(entry.size(), DEC);
     }
+    delayMicroseconds(TRANSMISSION_DELAY);
     entry.close();
   }
 }
@@ -191,6 +195,8 @@ void sendSnapshotFile(char* filename){
     Serial.write(buffer, bytesToRead);
     
     jpglen -= bytesToRead;
+
+    delayMicroseconds(TRANSMISSION_DELAY);
     
   }
   

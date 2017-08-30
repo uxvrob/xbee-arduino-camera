@@ -1,3 +1,5 @@
+
+
 /***************************************************************
 * Gateway Node GUI 
 *
@@ -7,8 +9,10 @@
 * 
 ***************************************************************/
 
+import controlP5.*;
 import interfascia.*;
 import processing.serial.*;
+
 
 // Window parameters
 int bgColor = 200;
