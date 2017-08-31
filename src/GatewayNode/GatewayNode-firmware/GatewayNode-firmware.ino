@@ -1,6 +1,8 @@
 
 #include <SoftwareSerial.h>
 
+#define MAX_BUF_SIZE 32
+
 // RX,  TX
 SoftwareSerial xBeeSerial(A0,A1); //RX,TX
 
@@ -18,13 +20,29 @@ void setup() {
 }
 
 void loop() {
-  
-  if(xBeeSerial.available()>0){
-    Serial.write(xBeeSerial.read());
-    
-  }
-  if(Serial.available() > 0){
-    xBeeSerial.write(Serial.read());
-  }
+
+
+  outputStream(xBeeSerial, Serial);
+
+  outputStream(Serial,xBeeSerial);
  
 }
+
+
+void outputStream(Stream &s_in, Stream &s_out){
+
+  uint8_t bytesToRead;
+  bytesToRead = s_in.available();
+  
+  if(bytesToRead > 0){
+    uint8_t *dataBuf;
+    dataBuf = new uint8_t[min(bytesToRead,MAX_BUF_SIZE)];
+    s_in.readBytes(dataBuf, bytesToRead);
+    for(int i=0; i<bytesToRead; i++){
+      s_out.write(dataBuf[i]);
+    }
+    delete [] dataBuf;  
+  }
+  
+}
+

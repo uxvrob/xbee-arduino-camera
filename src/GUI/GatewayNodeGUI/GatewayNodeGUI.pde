@@ -17,7 +17,7 @@ import processing.serial.*;
  * by uncommenting printArray block in setup() method
  *******************************************************************/
  
-final String SER_PORT = "COM5";       //Serial.list()[2];
+final String SER_PORT = "COM4";       //Serial.list()[2];
 final int SER_BAUD_RATE = 57600;      //This should match the Serial baud rate in the GatewayNode firmware
 final int BUF_SIZE = 64;              
 
@@ -136,7 +136,7 @@ void setup() {
     progress = new IFProgressBar (xpos_progressBar, ypos_progressBar, int(width*0.4));
     progressLbl = new IFLabel("Transfer Progress",xpos_progressLbl,ypos_progressLbl, 12);
     
-    imgFile = loadImage(sketchPath() +"/IMAGE00.jpg");
+    imgFile = loadImage(sketchPath() +"/default.jpg");
   }
   catch(Exception e){
     println ("Unhandeled exception");
@@ -291,7 +291,8 @@ void snapshotCmd(){
   gwSerial.write("AV+CSEND");
   gwSerial.write(10); 
   
-  recvImgFileName = String.valueOf(year());
+  recvImgFileName += "IMAGE_";
+  recvImgFileName += String.valueOf(year());
   recvImgFileName += String.valueOf(month());
   recvImgFileName += String.valueOf(day());
   recvImgFileName += "-";
@@ -386,7 +387,7 @@ void serialEvent(Serial s){
                      txtAConsole.setText(txtAConsole.getText()
                                    +"Could not load image... currentFileSize: "+currentFileSize + "\n");
 
-                     imgFile = loadImage(sketchPath() +"/IMAGE00.jpg");
+                     imgFile = loadImage(sketchPath() +"/default.jpg");
                  }
 
              imgRead = false;

@@ -14,12 +14,12 @@
 #include <Time.h>  
 
 #define ND_CMD_BUF_SIZE 200     // Command Buffer maximum size
-#define IMG_BUF_SIZE 64         // Byte batch of image to send via Serial
+#define IMG_BUF_SIZE 32         // Byte batch of image to send via Serial
 #define SD_CHIP_SELECT_PIN 4    // SD card chip select
 #define CAM_RX_PIN 2
 #define CAM_TX_PIN 3
 #define SER_BAUD_RATE 57600    // Serial baud rate
-#define TRANSMISSION_DELAY 1000 // in microseconds (us)
+#define TRANSMISSION_DELAY 500 // in microseconds (us)
 
 boolean debugOn = true;
 
