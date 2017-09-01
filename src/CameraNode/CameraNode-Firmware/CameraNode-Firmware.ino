@@ -13,18 +13,19 @@
 #include <SoftwareSerial.h>      
 #include <Time.h>  
 
+
 #define ND_CMD_BUF_SIZE 200     // Command Buffer maximum size
 #define IMG_BUF_SIZE 64         // Byte batch of image to send via Serial
 #define SD_CHIP_SELECT_PIN 4    // SD card chip select
 #define CAM_RX_PIN 2
 #define CAM_TX_PIN 3
 #define SER_BAUD_RATE 57600    // Serial baud rate
-#define TRANSMISSION_DELAY 1000 // in microseconds (us)
+#define TRANSMISSION_DELAY 100 // in microseconds (us)
 
-boolean debugOn = true;
+boolean debugOn = false;
 
 typedef struct {
-  char szName[50];
+  char szName[25];
   uint16_t uSize;
   uint16_t uCRC32;
 } image_file_t;
@@ -42,7 +43,7 @@ void getImageSize(){
   
   uint8_t imgsize = cam.getImageSize();
   
-  Serial.print("AV+IMGS,");
+  Serial.print(F("AV+IMGS,"));
   if (imgsize == VC0706_640x480) Serial.println(VC0706_640x480);
   if (imgsize == VC0706_320x240) Serial.println(VC0706_320x240);
   if (imgsize == VC0706_160x120) Serial.println(VC0706_160x120);
@@ -55,9 +56,9 @@ void getCameraVersion(){
   char *reply = cam.getVersion();
   
   if (reply == 0) {
-    Serial.println("AV+ERR,0x0000");
+    Serial.println(F("AV+ERR,0x0000"));
   } else {
-    Serial.print("AV+CSV,");
+    Serial.print(F("AV+CSV,"));
     Serial.println(reply);
   }
   
@@ -67,7 +68,6 @@ void printDirectory(File dir, int numTabs) {
   while (true) {
 
     File entry =  dir.openNextFile();
-    
     if (! entry) {
       // no more files
       break;
@@ -75,9 +75,7 @@ void printDirectory(File dir, int numTabs) {
     for (uint8_t i = 0; i < numTabs; i++) {
       Serial.print('\t');
     }
-    
     Serial.print(entry.name());
-    delayMicroseconds(TRANSMISSION_DELAY);
     if (entry.isDirectory()) {
       Serial.println("/");
       printDirectory(entry, numTabs + 1);
@@ -86,7 +84,6 @@ void printDirectory(File dir, int numTabs) {
       Serial.print("\t\t");
       Serial.println(entry.size(), DEC);
     }
-    delayMicroseconds(TRANSMISSION_DELAY);
     entry.close();
   }
 }
@@ -105,7 +102,95 @@ bool generateImageFilename(char* szFileName){
   return true;
 }
 
-void takeSnapshotSaveToSD(image_file_t &ift){
+bool getRecentImageFilename(char* szFileName){
+  strcpy(szFileName, "IMAGE00.JPG");
+  int maxVal;
+  
+  for (int i = 0; i < 1000; i++) {
+    szFileName[5] = '0' + i/10;
+    szFileName[6] = '0' + i%10;
+    
+    // create if does not exist, do not open existing, write, sync after write
+    
+    if (!SD.exists(szFileName)) {
+      
+      if(i == 0){
+        strcpy(szFileName, "");
+        return false;
+      }
+      maxVal = i-1;
+      break;
+    }
+  }
+
+
+  szFileName[5] = '0' + maxVal/10;
+  szFileName[6] = '0' + maxVal%10;
+  
+  return true;
+}
+
+void takeSnapshotSaveToSD(image_file_t* ift){
+
+  // Get snapshot
+  if (!cam.takePicture()) {
+    Serial.println(F("AV+ERR,TAKE_PIC;"));
+    return;
+  }
+
+  uint8_t *buffer;                     // transmission buffer
+  uint8_t bytesToRead;                 // bytes in transmission buffer
+  uint16_t jpglen = cam.frameLength(); // Get the size of the image (frame) taken
+  File imgFile;                        // file object for image storage
+
+  // Create an image with incremental name IMAGExx.JPG
+  char filename[13];
+
+  if(!generateImageFilename(filename)){
+    Serial.println("AV+ERR,GEN_FILENAME;");
+    return;
+  }
+  
+  // set ift params
+  strcpy(ift->szName, filename);
+  ift->uSize = jpglen;
+
+
+  if(debugOn) Serial.print("AV+DEBUG,TAKESNAP_SD,"+String(ift->szName)+","+String(ift->uSize)+";");
+  
+  
+  // Open the file for writing
+  imgFile = SD.open(filename, FILE_WRITE);
+
+  // Sending image via serial
+  
+  while (jpglen > 0){
+    
+    // read IMG_BUF_SIZE bytes at a time;
+    uint8_t bytesToRead = min(IMG_BUF_SIZE, jpglen); //change 32 to 64 for a speedup but may not work with all setups!
+ 
+    buffer = cam.readPicture(bytesToRead);
+
+    imgFile.write(buffer, bytesToRead);
+    jpglen -= bytesToRead;
+    
+  }
+
+  // Determine CRC of file
+  ift->uCRC32 = 0;
+
+  imgFile.flush();
+  imgFile.close();
+
+  if(!cam.resumeVideo()){
+    Serial.println("AV+ERR,RESUME_VIDEO;");
+    return false;
+  }
+
+  return true;
+}
+
+void takeSnapshotTransmitSaveToSD(image_file_t* ift){
 
   // Get snapshot
   if (!cam.takePicture()) {
@@ -127,11 +212,15 @@ void takeSnapshotSaveToSD(image_file_t &ift){
   }
   
   // set ift params
-  strcpy(ift.szName, filename);
-  ift.uSize = jpglen;
+  strcpy(ift->szName, filename);
+  ift->uSize = jpglen;
 
+  if(debugOn) Serial.print("AV+DEBUG,TAKESNAP_SD,"+String(ift->szName)+","+String(ift->uSize)+";");
 
-  if(debugOn) Serial.print("AV+DEBUG,TAKESNAP_SD,"+String(ift.szName)+","+String(ift.uSize)+";");
+  //Send transmission packet with img file length
+  Serial.print("AV+CTRANS,");
+  Serial.print(jpglen);
+  Serial.write(";");
   
   
   // Open the file for writing
@@ -147,18 +236,17 @@ void takeSnapshotSaveToSD(image_file_t &ift){
     buffer = cam.readPicture(bytesToRead);
 
     imgFile.write(buffer, bytesToRead);
+    Serial.write(buffer, bytesToRead);
+    
     jpglen -= bytesToRead;
     
   }
-
-  // Determine CRC of file
-  ift.uCRC32 = 0;
 
   imgFile.flush();
   imgFile.close();
 
   if(!cam.resumeVideo()){
-    Serial.println("AV+ERR,RESUME_VIDEO;");
+    Serial.println(F("AV+ERR,RESUME_VIDEO;"));
     return false;
   }
 
@@ -178,7 +266,7 @@ void sendSnapshotFile(char* filename){
   uint16_t jpglen = imgFile.size();          // Get the size of the image (frame) taken
 
   //Send transmission packet with img file length
-  Serial.print("AV+CTRANS,");
+  Serial.print(F("AV+CTRANS,"));
   Serial.print(jpglen);
   Serial.write(";");
 
@@ -189,14 +277,14 @@ void sendSnapshotFile(char* filename){
     
     // read IMG_BUF_SIZE bytes at a time;
     
-    uint8_t bytesToRead = min(IMG_BUF_SIZE, jpglen); //change 32 to 64 for a speedup but may not work with all setups!
+    uint8_t bytesToRead = min(IMG_BUF_SIZE, jpglen); 
 
     imgFile.read(buffer, bytesToRead);
     Serial.write(buffer, bytesToRead);
     
     jpglen -= bytesToRead;
 
-    delayMicroseconds(TRANSMISSION_DELAY);
+    //delayMicroseconds(TRANSMISSION_DELAY);
     
   }
   
@@ -214,14 +302,14 @@ void setup() {
   
   // see if the card is present and can be initialized:
   if (!SD.begin(SD_CHIP_SELECT_PIN)) {
-    Serial.println("AV+ERR,0x01;");
+    Serial.println(F("AV+ERR,0x01;"));
   }  
   
   // Try to locate the camera
   if (cam.begin()) {
-    Serial.println("AV+CS,0x01;");
+    Serial.println(F("AV+CS,0x01;"));
   } else {
-    Serial.println("AV+CS,0x00;");
+    Serial.println(F("AV+CS,0x00;"));
     return;
   }
 
@@ -240,38 +328,56 @@ void loop(){
     // Command state machine
     // If a command string terminated by \n is received, process the string
 
-    image_file_t ift;
+    image_file_t* ift;
+    ift = new image_file_t[1];
+    
     
     if(cmdComplete){
 
       cmdBuf.trim();
       
       if(cmdBuf.equals("AV+CGETS")){        // Send snapshot via Serial routine
+
+        takeSnapshotTransmitSaveToSD(ift);
+
+
+      }else if(cmdBuf.equals("AV+SGETS")){        // Send snapshot via Serial routine
         
         takeSnapshotSaveToSD(ift);
-        sendSnapshotFile(ift.szName);
+        sendSnapshotFile(ift->szName);
 
       }else if(cmdBuf.equals("AV+SNAP")){
         
         takeSnapshotSaveToSD(ift);
-      
+        
+      }else if(cmdBuf.equals("AV+RECF")){
+        if(getRecentImageFilename(ift->szName)){
+          Serial.print(F("Recent image: "));
+          Serial.println(ift->szName);
+        }
+        else
+          Serial.println(F("No file created yet"));
+        
       }else if(cmdBuf.equals("AV+FILES")){
         
         File root = SD.open("/");
+        root.rewindDirectory();
         printDirectory(root, 0);
+        root.rewindDirectory();
         root.close();
       
       }else if(cmdBuf.equals("AV+CSEND")){
+        
+        getRecentImageFilename(ift->szName);
+        sendSnapshotFile(ift->szName);
       
-        sendSnapshotFile("IMAGE00.jpg");   
-
       }else if(cmdBuf.equals("AV+DEBUGON")){
 
         debugOn = true;
       
       }else if(cmdBuf.equals("AV+JRES")){   // Command to reset the arduino.  NOT IMPLEMENTED YET.
       
-        Serial.println("ROK");
+        Serial.println(F("ROK"));
       
       }else if(cmdBuf.equals("OK")){        // ACK type command
         
@@ -286,22 +392,31 @@ void loop(){
       cmdBuf = "";
       cmdComplete = false;
   }
+
+  processSerial();
+
+  delete [] ift;
 }
 
 // Thread for processing serial events.  A byte or char is added to a buffer until 
 // a newline character is received.
 
-void serialEvent(){
-  
-  while(Serial.available()){
-    
-    char inChar = (char)Serial.read();
-    cmdBuf += inChar;
+void processSerial(){
 
-    if(inChar == '\n'){
-      cmdComplete = true;
+  int bytesAvail = Serial.available();
+
+  if(bytesAvail > 0){
+  
+    for(int i = 0; i < bytesAvail; i++){
+      
+      char inChar = (char)Serial.read();
+      cmdBuf += inChar;
+  
+      if(inChar == '\n'){
+        cmdComplete = true;
+      }
+      
     }
-    
   }
   
 }
