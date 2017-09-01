@@ -17,9 +17,9 @@ import processing.serial.*;
  * by uncommenting printArray block in setup() method
  *******************************************************************/
  
-final String SER_PORT = "COM4";       //Serial.list()[2];
+final String SER_PORT = "COM3";       //Serial.list()[2];
 final int SER_BAUD_RATE = 57600;      //This should match the Serial baud rate in the GatewayNode firmware
-final int BUF_SIZE = 64;              
+final int BUF_SIZE = 32;              
 
 // Window parameters
 
@@ -156,7 +156,7 @@ void setup() {
                     );
                     
   txtAConsole.setText(txtAConsole.getText()+"\n"
-                      + "Ready to take snapshot!");
+                      + "Ready to take snapshot!\ns");
                       
   progress.setProgress(norm(currentFileSize, 0,totalFileSize));
   progressLbl.setLabel("Transfer Progress "+str(round(progress.getProgress()*100))+"%"+" File Size: "+str(float(totalFileSize/1024))+"kb or "+str(totalFileSize)+" bytes");
@@ -288,6 +288,7 @@ void draw() {
 void snapshotCmd(){
   
   //gwSerial.write("AV+CGETS");
+  //gwSerial.write("AV+SGETS");
   gwSerial.write("AV+CSEND");
   gwSerial.write(10); 
   
@@ -334,7 +335,7 @@ void serialEvent(Serial s){
             // Read stream data and output to jpg file
             try{
               
-              int bytesToRead = min(64, (totalFileSize-currentFileSize));
+              int bytesToRead = min(BUF_SIZE, (totalFileSize-currentFileSize));
               byte[] buffer = new byte[bytesToRead];
               
               buffer = s.readBytes(bytesToRead);
@@ -375,20 +376,20 @@ void serialEvent(Serial s){
              }
              
 
+             txtAConsole.setText(txtAConsole.getText()
+                                 +"Transfer complete. File: "+recvImgFileName + "\n");
+             try{
+               imgFile = loadImage(sketchPath() + "/" + recvImgFileName);
+               txtAConsole.setText(txtAConsole.getText()
+                                 + "New image width x height: "+str(imgFile.width)+" x " + str(imgFile.height)+ "\n");
+             }
+             catch(Exception e){
+                 e.printStackTrace();
                  txtAConsole.setText(txtAConsole.getText()
-                                     +"Transfer complete. File: "+recvImgFileName + "\n");
-                 try{
-                   imgFile = loadImage(sketchPath() + "/" + recvImgFileName);
-                   txtAConsole.setText(txtAConsole.getText()
-                                     + "New image width x height: "+str(imgFile.width)+" x " + str(imgFile.height)+ "\n");
-                 }
-                 catch(Exception e){
-                     e.printStackTrace();
-                     txtAConsole.setText(txtAConsole.getText()
-                                   +"Could not load image... currentFileSize: "+currentFileSize + "\n");
-
-                     imgFile = loadImage(sketchPath() +"/default.jpg");
-                 }
+                               +"Could not load image... currentFileSize: "+currentFileSize + "\n");
+  
+                 imgFile = loadImage(sketchPath() +"/default.jpg");
+             }
 
              imgRead = false;
      

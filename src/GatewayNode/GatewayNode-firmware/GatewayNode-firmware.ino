@@ -1,7 +1,20 @@
 
+/***************************************************************
+* Gateway Node firmware
+*
+* @author Robbie Sharma robbie -at- rsconsulting.ca
+* @date August 21, 2017
+* @desc Before upload, flip switch to "USB" on the arduino Shield
+* 
+*  TODO:  Develop a simple protocol framework with handshaking
+*  for transmitting data between xBee modules and Server. 
+***************************************************************/
+
 #include <SoftwareSerial.h>
 
-#define MAX_BUF_SIZE 32
+// Incresae software serial maximum buffer size 
+#define _SS_MAX_RX_BUFF 256
+#define MAX_BUF_SIZE 64
 
 // RX,  TX
 SoftwareSerial xBeeSerial(A0,A1); //RX,TX
