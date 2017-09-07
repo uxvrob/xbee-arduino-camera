@@ -201,13 +201,6 @@ void ModbusMaster::beginTransmission(uint16_t u16Address) {
 	u16TransmitBufferLength = 0;
 }
 
-/*
-void ModbusMaster::printADUData(){
-	for (int i=0; i<5;i++){
-		
-	}
-}
-*/
 
 void ModbusMaster::sendBit(bool data) {
 	uint8_t txBitIndex = u16TransmitBufferLength % 16;
@@ -239,13 +232,6 @@ void ModbusMaster::send(uint32_t data) {
 void ModbusMaster::send(uint8_t data) {
 	send(word(0x00, data));	  //MSB = 0, LSB = data
 }
-
-
-
-
-
-
-
 
 
 uint8_t ModbusMaster::available(void) {
@@ -609,14 +595,45 @@ uint8_t ModbusMaster::readWriteMultipleRegisters(uint16_t u16ReadAddress,
 	_u16WriteQty = u16WriteQty;
 	return ModbusMasterTransaction(ku8MBReadWriteMultipleRegisters);
 }
-uint8_t ModbusMaster::readWriteMultipleRegisters(uint16_t u16ReadAddress,
-  uint16_t u16ReadQty) {
-	_u16ReadAddress = u16ReadAddress;
-	_u16ReadQty = u16ReadQty;
-	_u16WriteQty = _u8TransmitBufferIndex;
-	return ModbusMasterTransaction(ku8MBReadWriteMultipleRegisters);
-}
 
+
+/**
+Modbus function 0x20 Read File Record
+
+This function code performs a combination of one read operation and one
+write operation in a single MODBUS transaction. The write operation is
+performed before the read. Holding registers are addressed starting at
+zero.
+
+The request specifies the starting address and number of holding
+registers to be read as well as the starting address, and the number of
+holding registers. The data to be written is specified in the transmit
+buffer.
+
+@param u16ReferenceType address of the first holding register (0x0000..0xFFFF)
+@param u16FileNumber quantity of holding registers to read (1..125, enforced by remote device)
+@param u16RecordNumber address of the first holding register (0x0000..0xFFFF)
+@param u16WriteQty quantity of holding registers to write (1..121, enforced by remote device)
+@return 0 on success; exception number on failure
+@ingroup register
+*/
+
+uint8_t ModbusMaster::setFileRecordBuffer(uint16_t u16FileNumber, uint16_t u16RecordNumber,
+  uint16_t u16RecordLength) {
+	 //TODO: Calculate byte count
+	 
+	uint8_t result = ku8MBSuccess;
+	
+	result = setTransmitBuffer(_u8TransmitBufferIndex++,6);
+	if(result != ku8MBSuccess) return result;
+	result = setTransmitBuffer(_u8TransmitBufferIndex++,u16FileNumber);
+	if(result != ku8MBSuccess) return result;
+	result = setTransmitBuffer(_u8TransmitBufferIndex++,u16RecordNumber);
+	if(result != ku8MBSuccess) return result;
+	result = setTransmitBuffer(_u8TransmitBufferIndex++,u16RecordLength);
+	return result;
+
+}
 
 /* _____PRIVATE FUNCTIONS____________________________________________________ */
 /**
@@ -656,6 +673,15 @@ uint8_t ModbusMaster::ModbusMasterTransaction(uint8_t u8MBFunction) {
 			u8ModbusADU[u8ModbusADUSize++] = lowByte(_u16ReadAddress);
 			u8ModbusADU[u8ModbusADUSize++] = highByte(_u16ReadQty);
 			u8ModbusADU[u8ModbusADUSize++] = lowByte(_u16ReadQty);
+			break;
+		case ku8MBReadFileRecords:
+			u8ModbusADU[u8ModbusADUSize++] = lowByte(6);
+			u8ModbusADU[u8ModbusADUSize++] = highByte(_u16FileNumber);
+			u8ModbusADU[u8ModbusADUSize++] = lowByte(_u16FileNumber);
+			u8ModbusADU[u8ModbusADUSize++] = highByte(_u16RecordNumber);
+			u8ModbusADU[u8ModbusADUSize++] = lowByte(_u16RecordNumber);
+			u8ModbusADU[u8ModbusADUSize++] = highByte(_u16RecordLength);
+			u8ModbusADU[u8ModbusADUSize++] = lowByte(_u16RecordLength);
 			break;
 	}
 
@@ -778,7 +804,6 @@ uint8_t ModbusMaster::ModbusMasterTransaction(uint8_t u8MBFunction) {
 		digitalWrite(ModbusMaster::MBTxEnablePin, LOW);
 	}
 	
-	//delay(100);
 	// loop until we run out of time or bytes, or an error occurs
 	u32StartTime = millis();
 	

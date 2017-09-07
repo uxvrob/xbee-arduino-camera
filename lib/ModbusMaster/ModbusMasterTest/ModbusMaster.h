@@ -85,6 +85,10 @@ Macro to generate 32-bit integer from (2) 16-bit words.
 #define bitClear(value, bit)		   ((value) &= ~(1UL << (bit)))
 #define bitWrite(value, bit, bitvalue) (bitvalue ? bitSet(value, bit) : bitClear(value, bit))
 
+/* _____CLASS STRUCTS_____________________________________________________ */
+
+// TODO: Add File Record struct definition
+
 
 
 /* _____CLASS DEFINITIONS____________________________________________________ */
@@ -225,9 +229,10 @@ public:
 	void	 clearResponseBuffer();
 	uint8_t  setTransmitBuffer(uint8_t, uint16_t);
 	void	 clearTransmitBuffer();
+	
+	uint8_t  setFileRecordBuffer(uint16_t, uint16_t, uint16_t);
 
 	void beginTransmission(uint16_t);
-	//uint8_t requestFrom(uint16_t, uint16_t);
 	void sendBit(bool);
 	void send(uint8_t);
 	void send(uint16_t);
@@ -253,7 +258,8 @@ public:
 	uint8_t  maskWriteRegister(uint16_t, uint16_t, uint16_t);
 	uint8_t  readWriteMultipleRegisters(uint16_t, uint16_t, uint16_t, uint16_t);
 	uint8_t  readWriteMultipleRegisters(uint16_t, uint16_t);
-	uint8_t  readFileRecord(uint16_t, uint16_t){};
+	uint8_t  readFileRecords(void);
+	uint8_t  writeFileRecords(){};
 
 private:
 	#if defined (PARTICLE)
@@ -266,7 +272,7 @@ private:
 	uint8_t  _u8MBSlave;										 ///< Modbus slave (1..255) initialized in constructor
 	uint16_t _u16BaudRate;									   ///< baud rate (300..115200) initialized in begin()
 	byte  _u16SerialConfig;               ///< serial config initialized in begin()
-	static const uint8_t ku8MaxBufferSize				= 96;   ///< size of response/transmit buffers
+	static const uint8_t ku8MaxBufferSize				= 256;   ///< size of response/transmit buffers
 	uint16_t _u16ReadAddress;									///< slave register from which to read
 	uint16_t _u16ReadQty;										///< quantity of words to read
 	uint16_t _u16ResponseBuffer[ku8MaxBufferSize];			   ///< buffer to store Modbus slave response; read via GetResponseBuffer()
@@ -279,6 +285,12 @@ private:
 	uint16_t* rxBuffer; // from Wire.h -- need to clean this up Rx
 	uint8_t _u8ResponseBufferIndex;
 	uint8_t _u8ResponseBufferLength;
+	
+	// File record
+	
+	uint16_t _u16FileNumber;
+	uint16_t _u16RecordNumber;
+	uint16_t _u16RecordLength;
 
 	// Modbus function codes for bit access
 	static const uint8_t ku8MBReadCoils				  = 0x01; ///< Modbus function 0x01 Read Coils
@@ -293,7 +305,10 @@ private:
 	static const uint8_t ku8MBWriteMultipleRegisters	 = 0x10; ///< Modbus function 0x10 Write Multiple Registers
 	static const uint8_t ku8MBMaskWriteRegister		  = 0x16; ///< Modbus function 0x16 Mask Write Register
 	static const uint8_t ku8MBReadWriteMultipleRegisters = 0x17; ///< Modbus function 0x17 Read Write Multiple Registers
-
+	
+	// Modbus function codes for File Record Access
+	static const uint8_t ku8MBReadFileRecords	   		= 0x14; ///< Modbus function 0x14 Read File Records
+	static const uint8_t ku8MBWriteFileRecords	   		= 0x15; ///< Modbus function 0x15 Write File Records
 
 
 	// master function that conducts Modbus transactions
