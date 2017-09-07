@@ -11,6 +11,7 @@
 ***************************************************************/
 
 #include <SoftwareSerial.h>
+#include "EasyTransfer.h"
 
 // Incresae software serial maximum buffer size 
 #define _SS_MAX_RX_BUFF 256
@@ -34,11 +35,11 @@ void setup() {
 
 void loop() {
 
-
+  
   outputStream(xBeeSerial, Serial);
-
+  delay(10);
   outputStream(Serial,xBeeSerial);
- 
+  delay(10);
 }
 
 
