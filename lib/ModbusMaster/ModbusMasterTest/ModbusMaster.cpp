@@ -38,10 +38,11 @@ Arduino library for communicating with Modbus slaves over RS232/485 (via RTU pro
   
 #elif defined (ARDUINO) && ARDUINO >= 100
 	#include <Arduino.h>
+#ifdef CUSTOMSOFTWARESERIAL_H
 	#include "CustomSoftwareSerial.h"
-	
 	#define SERIAL_CONFIG CSERIAL_8E1
 	//CustomSoftwareSerial ModbusMaster::MBSerial = CustomSoftwareSerial(6,5,0);     ///< Pointer to Serial1 class object
+#endif
 #endif
 
 
@@ -96,11 +97,8 @@ Creates class object using default serial port 0, specified Modbus slave ID.
 @param u8MBSlave Modbus slave ID (1..255)
 @ingroup setup
 */
-#ifdef SPARK
+
 ModbusMaster::ModbusMaster(uint8_t u8MBSlave) 
-#else
-ModbusMaster::ModbusMaster(uint8_t u8MBSlave) : MBSerial(6,5,0)
-#endif
 {
   //ModbusMaster::MBSerial = &Serial1;
   //ModbusMaster::_u16SerialConfig = SERIAL_8E1;
@@ -118,8 +116,8 @@ Call once class has been instantiated, typically within setup().
 
 @ingroup setup
 */
-void ModbusMaster::begin(void) {
-	begin(9600);
+void ModbusMaster::begin(Stream* s) {
+	ModbusMaster::begin(s, 9600);
 }
 
 
@@ -133,17 +131,15 @@ Call once class has been instantiated, typically within setup().
 @param u16BaudRate baud rate, in standard increments (300..115200)
 @ingroup setup
 */
-void ModbusMaster::begin(uint16_t u16BaudRate){
+void ModbusMaster::begin(Stream* _s, uint16_t u16BaudRate){
 	_u8TransmitBufferIndex = 0;
 	u16TransmitBufferLength = 0;
 	
-	//Serial.printlnf("Baudrate: %d, Serialconfg: %d", u16BaudRate, _u16SerialConfig);
-	//Serial.printlnf("Baudrate: %d, Serialconfg: %d", 19200, SERIAL_8E1);
-
-	//ModbusMaster::MBSerial.begin(u16BaudRate, SERIAL_8E1);
-	//ModbusMaster::MBSerial.begin(19200, SERIAL_8E1);
-	MBSerial.begin(u16BaudRate, SERIAL_CONFIG);
-  //MBSerial.begin(u16BaudRate, CSERIAL_8E1);
+	_MBSerial = _s;
+	
+	//_MBSerial->begin(u16BaudRate);
+	
+	
 }
 
 
@@ -738,15 +734,15 @@ uint8_t ModbusMaster::ModbusMasterTransaction(uint8_t u8MBFunction) {
 	if(ModbusMaster::MBDebugSerialPrint == 1){
 		
 		Serial.print("Bytes not read: ");	
-		while(MBSerial.available()){
-				Serial.print(MBSerial.read(),HEX);
+		while(_MBSerial->available()){
+				Serial.print(_MBSerial->read(),HEX);
 				Serial.print(" ");
 		}
 		Serial.println("");
 	
 	}
 	else
-		while(MBSerial.read() != -1);
+		while(_MBSerial->read() != -1);
 
 	
 	// ---Transmit Command--- 
@@ -762,14 +758,14 @@ uint8_t ModbusMaster::ModbusMasterTransaction(uint8_t u8MBFunction) {
 
 	// Transmit loop - write to MBSerial
 	for (i = 0; i < u8ModbusADUSize; i++) {
-		MBSerial.write(u8ModbusADU[i]);
+		_MBSerial->write(u8ModbusADU[i]);
 		if(ModbusMaster::MBDebugSerialPrint == 1) { // Print trasnmitted frame for Debugging purposes out on Serial
 			Serial.print(u8ModbusADU[i], HEX);
 			Serial.print(" ");
 		}
 	}
 	u8ModbusADUSize = 0;
-	MBSerial.flush(); //Wait for transmission to get completed
+	_MBSerial->flush(); //Wait for transmission to get completed
 	
 	// ---Receive Response---
 	
@@ -787,8 +783,8 @@ uint8_t ModbusMaster::ModbusMasterTransaction(uint8_t u8MBFunction) {
 	u32StartTime = millis();
 	
 	while (u8BytesLeft && !u8MBStatus) {
-		if (MBSerial.available()) {
-			u8ModbusADU[u8ModbusADUSize++] = MBSerial.read();
+		if (_MBSerial->available()) {
+			u8ModbusADU[u8ModbusADUSize++] = _MBSerial->read();
 			
 			
 			if (u8ModbusADU[0] == 0) { //Incase the received character is zero, discard it

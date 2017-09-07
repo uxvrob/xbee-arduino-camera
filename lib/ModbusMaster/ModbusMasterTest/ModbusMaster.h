@@ -30,6 +30,7 @@ Arduino library for communicating with Modbus slaves over RS232/485 (via RTU pro
   Copyright Â© 2009-2013 Doc Walker <4-20ma at wvfans dot net>
   Adapted for Spark Core by Paul Kourany, March 14, 2014
   Further modifications and port to Particle Photon by Anurag Chugh, July 5, 2016 <lithiumhead at gmail dot com>
+  Modfications and added file record read (function 20) by Robbie Sharma, September 7, 2017 <robbie at rsconsulting dot com>
 */
 
 
@@ -40,7 +41,9 @@ Arduino library for communicating with Modbus slaves over RS232/485 (via RTU pro
   #include "application.h"
 #elif defined (ARDUINO) && ARDUINO >= 100
 	#include <Arduino.h>
+#ifdef CUSTOMSOFTWARESERIAL_H
 	#include "CustomSoftwareSerial.h"
+#endif
 #endif
 
 
@@ -95,19 +98,15 @@ public:
 	// Modbus timeout [milliseconds]
 	uint8_t ku8MBResponseTimeout			= 230;  ///< Modbus timeout [milliseconds]
 
-	#if defined (PARTICLE)
-		static USARTSerial MBSerial;		 ///< Pointer to Serial1 class object
-	#elif defined (ARDUINO) && ARDUINO >= 100
-		CustomSoftwareSerial MBSerial;     ///< Pointer to Serial1 class object
-	#endif
+
 	int MBTxEnablePin;			 ///< GPIO pin used for toggling RS485 Driver IC's TX Enable pin, default is D7
 	uint8_t MBUseEnablePin;			 ///< Should a TX_ENABLE pin be used? 0 = No, 1 = Yes
 	uint8_t MBDebugSerialPrint;		 ///< Do you want the TX and RX fraimes printed out on Serial for debugging? 0 = No, 1 = Yes
 
 	ModbusMaster(uint8_t);
   
-	void begin();
-	void begin(uint16_t);
+	void begin(Stream*);
+	void begin(Stream*, uint16_t);
 	void idle(void (*)());
 
 	// Modbus exception codes
@@ -254,8 +253,15 @@ public:
 	uint8_t  maskWriteRegister(uint16_t, uint16_t, uint16_t);
 	uint8_t  readWriteMultipleRegisters(uint16_t, uint16_t, uint16_t, uint16_t);
 	uint8_t  readWriteMultipleRegisters(uint16_t, uint16_t);
+	uint8_t  readFileRecord(uint16_t, uint16_t){};
 
 private:
+	#if defined (PARTICLE)
+	static USARTSerial _MBSerial;		 ///< Pointer to Serial1 class object
+	#elif defined (ARDUINO) && ARDUINO >= 100
+	Stream* _MBSerial;     ///< Pointer to Serial1 class object
+	#endif
+	
 	uint8_t  _u8SerialPort;									  ///< serial port (0..3) initialized in constructor
 	uint8_t  _u8MBSlave;										 ///< Modbus slave (1..255) initialized in constructor
 	uint16_t _u16BaudRate;									   ///< baud rate (300..115200) initialized in begin()
