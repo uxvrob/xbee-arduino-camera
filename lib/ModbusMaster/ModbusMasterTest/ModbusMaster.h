@@ -231,6 +231,7 @@ public:
 	void	 clearTransmitBuffer();
 	
 	uint8_t  setFileRecordBuffer(uint16_t, uint16_t, uint16_t);
+	void cbProcessFileRecordSubRequest(void (*)());
 
 	void beginTransmission(uint16_t);
 	void sendBit(bool);
@@ -258,8 +259,7 @@ public:
 	uint8_t  maskWriteRegister(uint16_t, uint16_t, uint16_t);
 	uint8_t  readWriteMultipleRegisters(uint16_t, uint16_t, uint16_t, uint16_t);
 	uint8_t  readWriteMultipleRegisters(uint16_t, uint16_t);
-	uint8_t  readFileRecords(void);
-	uint8_t  writeFileRecords(){};
+	uint8_t  readFileRecord(void (*)());
 
 private:
 	#if defined (PARTICLE)
@@ -307,8 +307,8 @@ private:
 	static const uint8_t ku8MBReadWriteMultipleRegisters = 0x17; ///< Modbus function 0x17 Read Write Multiple Registers
 	
 	// Modbus function codes for File Record Access
-	static const uint8_t ku8MBReadFileRecords	   		= 0x14; ///< Modbus function 0x14 Read File Records
-	static const uint8_t ku8MBWriteFileRecords	   		= 0x15; ///< Modbus function 0x15 Write File Records
+	static const uint8_t ku8MBReadFileRecord	   		= 0x14; ///< Modbus function 0x14 Read File Records
+	static const uint8_t ku8MBWriteFileRecord	   		= 0x15; ///< Modbus function 0x15 Write File Records
 
 
 	// master function that conducts Modbus transactions
@@ -316,5 +316,8 @@ private:
 
 	// idle callback function; gets called during idle time between TX and RX
 	void (*_idle)();
+	
+	// File Record Response callback; gets called on every sub-request
+	void (*_cbProcessFileRecordSubRequest)();
 };
 #endif

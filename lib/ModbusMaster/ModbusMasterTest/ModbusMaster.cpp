@@ -262,7 +262,6 @@ void ModbusMaster::idle(void (*idle)()) {
 	_idle = idle;
 }
 
-
 /**
 Retrieve data from response buffer.
 
@@ -326,6 +325,34 @@ void ModbusMaster::clearTransmitBuffer() {
 	for (i = 0; i < ku8MaxBufferSize; i++) {
 	  _u16TransmitBuffer[i] = 0;
 	}
+}
+
+/**
+Place file record requests into transmit buffer
+
+@see ModbusMaster::setTransmitBuffer(uint8_t u8Index, uint16_t u16Value)
+@param uint16_t u16FileNumber file id or number (0x0001..0xFFFF)
+@param uint16_t u16RecordNumber record number between 0 and 10000 (0x0000 to 0x270F) 
+@param uint16_t u16RecordLength length of the record requested N
+@return 0 on success; exception number on failure
+@ingroup buffer
+*/
+
+uint8_t ModbusMaster::setFileRecordBuffer(uint16_t u16FileNumber, uint16_t u16RecordNumber,
+  uint16_t u16RecordLength) {
+	 //TODO: Calculate byte count
+	 
+	uint8_t result = ku8MBSuccess;
+	
+	result = setTransmitBuffer(_u8TransmitBufferIndex++,6);
+	if(result != ku8MBSuccess) return result;
+	result = setTransmitBuffer(_u8TransmitBufferIndex++,u16FileNumber);
+	if(result != ku8MBSuccess) return result;
+	result = setTransmitBuffer(_u8TransmitBufferIndex++,u16RecordNumber);
+	if(result != ku8MBSuccess) return result;
+	result = setTransmitBuffer(_u8TransmitBufferIndex++,u16RecordLength);
+	return result;
+
 }
 
 
@@ -598,17 +625,12 @@ uint8_t ModbusMaster::readWriteMultipleRegisters(uint16_t u16ReadAddress,
 
 
 /**
-Modbus function 0x20 Read File Record
+Modbus function 0x14 Read File Records
 
 This function code performs a combination of one read operation and one
 write operation in a single MODBUS transaction. The write operation is
 performed before the read. Holding registers are addressed starting at
 zero.
-
-The request specifies the starting address and number of holding
-registers to be read as well as the starting address, and the number of
-holding registers. The data to be written is specified in the transmit
-buffer.
 
 @param u16ReferenceType address of the first holding register (0x0000..0xFFFF)
 @param u16FileNumber quantity of holding registers to read (1..125, enforced by remote device)
@@ -618,22 +640,20 @@ buffer.
 @ingroup register
 */
 
-uint8_t ModbusMaster::setFileRecordBuffer(uint16_t u16FileNumber, uint16_t u16RecordNumber,
-  uint16_t u16RecordLength) {
-	 //TODO: Calculate byte count
-	 
-	uint8_t result = ku8MBSuccess;
-	
-	result = setTransmitBuffer(_u8TransmitBufferIndex++,6);
-	if(result != ku8MBSuccess) return result;
-	result = setTransmitBuffer(_u8TransmitBufferIndex++,u16FileNumber);
-	if(result != ku8MBSuccess) return result;
-	result = setTransmitBuffer(_u8TransmitBufferIndex++,u16RecordNumber);
-	if(result != ku8MBSuccess) return result;
-	result = setTransmitBuffer(_u8TransmitBufferIndex++,u16RecordLength);
-	return result;
 
+/**
+Process File record sub request
+
+This function gets called during the dissassembly phase of the received file record response.
+It is called to process the data in the response buffer.
+
+*/
+
+uint8_t ModbusMaster::readFileRecord(void (*cbProcessFileRecordSubRequest)()){
+	_cbProcessFileRecordSubRequest = cbProcessFileRecordSubRequest;
+	return ModbusMasterTransaction(ku8MBReadFileRecord);
 }
+
 
 /* _____PRIVATE FUNCTIONS____________________________________________________ */
 /**
@@ -652,7 +672,7 @@ Sequence:
 uint8_t ModbusMaster::ModbusMasterTransaction(uint8_t u8MBFunction) {
 	uint8_t u8ModbusADU[256];
 	uint8_t u8ModbusADUSize = 0;
-	uint8_t i, u8Qty;
+	uint8_t i, j, u8Qty;
 	uint16_t u16CRC;
 	uint32_t u32StartTime;
 	uint8_t u8BytesLeft = 8;
@@ -664,6 +684,7 @@ uint8_t ModbusMaster::ModbusMasterTransaction(uint8_t u8MBFunction) {
 	u8ModbusADU[u8ModbusADUSize++] = u8MBFunction;
 
 	switch(u8MBFunction) {
+
 		case ku8MBReadCoils:
 		case ku8MBReadDiscreteInputs:
 		case ku8MBReadInputRegisters:
@@ -673,16 +694,7 @@ uint8_t ModbusMaster::ModbusMasterTransaction(uint8_t u8MBFunction) {
 			u8ModbusADU[u8ModbusADUSize++] = lowByte(_u16ReadAddress);
 			u8ModbusADU[u8ModbusADUSize++] = highByte(_u16ReadQty);
 			u8ModbusADU[u8ModbusADUSize++] = lowByte(_u16ReadQty);
-			break;
-		case ku8MBReadFileRecords:
-			u8ModbusADU[u8ModbusADUSize++] = lowByte(6);
-			u8ModbusADU[u8ModbusADUSize++] = highByte(_u16FileNumber);
-			u8ModbusADU[u8ModbusADUSize++] = lowByte(_u16FileNumber);
-			u8ModbusADU[u8ModbusADUSize++] = highByte(_u16RecordNumber);
-			u8ModbusADU[u8ModbusADUSize++] = lowByte(_u16RecordNumber);
-			u8ModbusADU[u8ModbusADUSize++] = highByte(_u16RecordLength);
-			u8ModbusADU[u8ModbusADUSize++] = lowByte(_u16RecordLength);
-			break;
+			break;		
 	}
 
 	switch(u8MBFunction) {
@@ -698,6 +710,13 @@ uint8_t ModbusMaster::ModbusMasterTransaction(uint8_t u8MBFunction) {
 	}
 
 	switch(u8MBFunction) {
+		case ku8MBReadFileRecord:			
+			u8ModbusADU[u8ModbusADUSize++] = lowByte(_u8TransmitBufferIndex);
+			for(i = 0; i < (_u8TransmitBufferIndex>>1); i++){
+				u8ModbusADU[u8ModbusADUSize++] = highByte(_u16TransmitBuffer[i]);
+				u8ModbusADU[u8ModbusADUSize++] = lowByte(_u16TransmitBuffer[i]);
+			}
+			break;
 		case ku8MBWriteSingleCoil:
 			u8ModbusADU[u8ModbusADUSize++] = highByte(_u16WriteQty);
 			u8ModbusADU[u8ModbusADUSize++] = lowByte(_u16WriteQty);
@@ -777,7 +796,6 @@ uint8_t ModbusMaster::ModbusMasterTransaction(uint8_t u8MBFunction) {
 	}
 	
 	if(ModbusMaster::MBDebugSerialPrint == 1) { // Print transmitted frame for Debugging purposes out on Serial
-	
 		Serial.print(F("TX: "));
 	}
 	
@@ -854,6 +872,7 @@ uint8_t ModbusMaster::ModbusMasterTransaction(uint8_t u8MBFunction) {
 
 			// evaluate returned Modbus function code
 			switch(u8ModbusADU[1]) {
+				case ku8MBReadFileRecord:
 				case ku8MBReadCoils:
 				case ku8MBReadDiscreteInputs:
 				case ku8MBReadInputRegisters:
@@ -898,6 +917,33 @@ uint8_t ModbusMaster::ModbusMasterTransaction(uint8_t u8MBFunction) {
 	if (!u8MBStatus) {
 		// evaluate returned Modbus function code
 		switch(u8ModbusADU[1]) {
+			case ku8MBReadFileRecord:
+				i=3;
+				
+				
+				while(i <(u8ModbusADU[2] >> 1)){
+					// Iterate through each byte
+					u8BytesLeft = u8ModbusADU[i++];
+					_u8ResponseBufferLength = u8BytesLeft;
+					
+					// Discard reference type
+					u8ModbusADU[i++];
+					
+					// Process data
+					for(j=0; u8BytesLeft > 0; j++){
+						if(i < ku8MaxBufferSize){
+							_u16ResponseBuffer[j] = word(u8ModbusADU[2 * i + 3], u8ModbusADU[2 * i + 4]);
+						}
+						
+						i++;
+						u8BytesLeft--;
+					}
+					
+					// Process response buffer via callback
+					if(_cbProcessFileRecordSubRequest) _cbProcessFileRecordSubRequest();
+					
+				}
+				break;
 			case ku8MBReadCoils:
 			case ku8MBReadDiscreteInputs:
 				// load bytes into word; response bytes are ordered L, H, L, H, ...
@@ -928,6 +974,8 @@ uint8_t ModbusMaster::ModbusMasterTransaction(uint8_t u8MBFunction) {
 					_u8ResponseBufferLength = i;
 				}
 				break;
+				
+			
 		}
 	}
 
