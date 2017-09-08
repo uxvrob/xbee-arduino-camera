@@ -12,7 +12,6 @@
 #include <SD.h>
 #include <SoftwareSerial.h>      
 #include <Time.h>  
-#include <EasyTransfer.h>
 
 #define ND_CMD_BUF_SIZE 200     // Command Buffer maximum size
 #define IMG_BUF_SIZE 64         // Byte batch of image to send via Serial
@@ -21,6 +20,44 @@
 #define CAM_TX_PIN 3
 #define SER_BAUD_RATE 57600    // Serial baud rate
 #define TRANSMISSION_DELAY 100 // in microseconds (us)
+
+/* _____UTILITY MACROS_______________________________________________________ */
+/**
+@def lowWord(ww) ((uint16_t) ((ww) & 0xFFFF))
+Macro to return low word of a 32-bit integer.
+*/
+#define lowWord(ww) ((uint16_t) ((ww) & 0xFFFF))
+
+
+/**
+@def highWord(ww) ((uint16_t) ((ww) >> 16))
+Macro to return high word of a 32-bit integer.
+*/
+#define highWord(ww) ((uint16_t) ((ww) >> 16))
+
+
+/**
+@def LONG(hi, lo) ((uint32_t) ((hi) << 16 | (lo)))
+Macro to generate 32-bit integer from (2) 16-bit words.
+*/
+#define LONG(hi, lo) ((uint32_t) ((hi) << 16 | (lo)))
+
+
+
+
+
+/* _____PROJECT INCLUDES_____________________________________________________ */
+// functions to calculate Modbus Application Data Unit CRC
+//#include <util/crc16.h>
+
+
+
+#define lowByte(w)           ((w) & 0xFF)
+#define highByte(w)         (((w) >> 8) & 0xFF)
+#define bitRead(value, bit)     (((value) >> (bit)) & 0x01)
+#define bitSet(value, bit)       ((value) |= (1UL << (bit)))
+#define bitClear(value, bit)       ((value) &= ~(1UL << (bit)))
+#define bitWrite(value, bit, bitvalue) (bitvalue ? bitSet(value, bit) : bitClear(value, bit))
 
 boolean debugOn = false;
 
@@ -37,6 +74,28 @@ boolean cmdComplete = false;
 // Serial and camera connections
 SoftwareSerial cameraconnection = SoftwareSerial(CAM_RX_PIN,CAM_TX_PIN);
 Adafruit_VC0706 cam = Adafruit_VC0706(&cameraconnection);
+
+
+
+uint16_t word(uint8_t high, uint8_t low) {
+  uint16_t ret_val = low;
+  ret_val += (high << 8);
+  return ret_val;
+}
+
+uint16_t _crc16_update(uint16_t crc, uint8_t a) {
+  int i;
+
+  crc ^= a;
+  for (i = 0; i < 8; ++i)
+  {
+    if (crc & 1)
+      crc = (crc >> 1) ^ 0xA001;
+    else
+      crc = (crc >> 1);
+  }
+  return crc;
+}
 
 // Get image size from the camera 
 void getImageSize(){
@@ -253,6 +312,25 @@ void takeSnapshotTransmitSaveToSD(image_file_t* ift){
   return true;
 }
 
+void sendBuffer(uint8_t* buffer, uint8_t bytesToRead){
+  uint16_t u16CRC = 0xFFFF;
+  
+  Serial.write(0x76);
+  Serial.write(bytesToRead);
+
+  u16CRC = 0xFFFF;
+  
+  for (uint8_t i = 0; i < bytesToRead; i++) {
+    u16CRC = _crc16_update(u16CRC, highByte(buffer[i]));
+    u16CRC = _crc16_update(u16CRC, lowByte(buffer[i]));
+  }
+  
+  Serial.write(buffer, bytesToRead);
+  Serial.write(u16CRC);
+  return;
+        
+}
+
 void sendSnapshotFile(char* filename){
 
   if(!SD.exists(filename)){
@@ -264,29 +342,57 @@ void sendSnapshotFile(char* filename){
   uint8_t buffer[IMG_BUF_SIZE];                              // transmission buffer
   uint8_t bytesToRead;                          // bytes in transmission buffer
   uint16_t jpglen = imgFile.size();          // Get the size of the image (frame) taken
+  uint8_t sendAttempts = 0;
+  uint16_t responseTime = millis();
 
   //Send transmission packet with img file length
   Serial.print(F("AV+CTRANS,"));
   Serial.print(jpglen);
   Serial.write(";");
 
-
   // Sending image via serial
   
-  while (jpglen > 0){
+  while (jpglen > 0 && (millis() - responseTime)<5000){
     
     // read IMG_BUF_SIZE bytes at a time;
-    
-    uint8_t bytesToRead = min(IMG_BUF_SIZE, jpglen); 
+    if(cmdComplete){
 
-    imgFile.read(buffer, bytesToRead);
-    Serial.write(buffer, bytesToRead);
-    
-    jpglen -= bytesToRead;
+      cmdBuf.trim();
 
-    //delayMicroseconds(TRANSMISSION_DELAY);
-    
+      if(cmdBuf.equals("+")){
+        
+        bytesToRead = min(IMG_BUF_SIZE, jpglen);
+
+        imgFile.read(buffer, bytesToRead);
+  
+        sendBuffer(buffer, bytesToRead);
+        
+        jpglen -= bytesToRead;
+        //delayMicroseconds(TRANSMISSION_DELAY);
+        
+        sendAttempts = 0;
+        
+      }else if(cmdBuf.equals("-")){
+        sendBuffer(buffer, bytesToRead);
+      }
+      else {
+        if(sendAttempts > 5)
+          break;
+        Serial.print(F("INVALID CMD. Attempt "));
+        Serial.print(sendAttempts,HEX);
+        Serial.println(F(" of 5"));
+        sendAttempts++;
+        delay(1000);        
+      }
+
+      responseTime = millis();
+      cmdBuf = "";
+      cmdComplete = false;
+    }
+    processSerial();
   }
+
+  if(jpglen >0) Serial.println("Transfer issues...");
   
   imgFile.close();
   
