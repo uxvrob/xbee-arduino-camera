@@ -28,10 +28,10 @@ void processImgInput(){
     timer = millis();
     createImageFile(); 
     // LOOP UNTIL ENTIRE FILE IS READ
-    
+    gwSerial.buffer(5);
     sendGatewayCmd("+");
-    delay(10);
-   
+    delay(100);
+
     while((totalFileSize-currentFileSize) > 0 && (millis()-timer)<TIMEOUT){
       
       char response = ku8MBSuccess;
@@ -52,8 +52,11 @@ void processImgInput(){
                 
                 bytesToRead--;
                 
-  
             }
+            else{
+              
+            }
+            
             
             if(bufferIndex == 2){
               if(buffer[0] != 0x76) response = ku8MBIllegalFunction; 
@@ -135,6 +138,8 @@ void processImgInput(){
        
        switch (response){   
           case ku8MBSuccess:
+            gwSerial.clear();
+            delay(10);
             sendGatewayCmd("+");
             break;
           case ku8MBIllegalFunction:
@@ -146,6 +151,7 @@ void processImgInput(){
           case ku8MBResponseTimedOut:    
           case ku8MBInvalidCRC:
             gwSerial.clear();
+            delay(10);
             sendGatewayCmd("-");
             break;
        }
