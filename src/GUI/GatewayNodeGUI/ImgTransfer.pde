@@ -22,18 +22,22 @@ void printExceptionCode(char e){
   
 }
 
-void processImgInput(Serial s){    
-  
+void processImgInput(){    
+    timer = millis();
+    createImageFile(); 
     // LOOP UNTIL ENTIRE FILE IS READ
-    while((totalFileSize-currentFileSize) > 0){
+    while((totalFileSize-currentFileSize) > 0 && (millis()-timer)<TIMEOUT){
       
       char response = ku8MBSuccess;
+      int bufferIndex = 0;
+      int u32StartTime = 0;
+      int bytesToRead = min(BUF_SIZE, (totalFileSize-currentFileSize))+5;
       
       while(bytesToRead > 0 && (response != ku8MBSuccess)){
         
-            if(s.available()>0){
+            if(gwSerial.available()>0){
                 
-                buffer[bufferIndex++] = byte(s.read());
+                buffer[bufferIndex++] = byte(gwSerial.read());
                 if(buffer[0] == 0){  // discard any 0 bytes;
                     bufferIndex--;   
                     continue;
@@ -91,39 +95,61 @@ void processImgInput(Serial s){
               }            
        }
             
-       if((totalFileSize-currentFileSize) > 0  && bytesToRead <= 0 && response == ku8MBSuccess){
+       if(response == ku8MBSuccess){
     
                 
-                // Read stream data and output to jpg file
-                println ("writing image data currentFileSize: ", currentFileSize);
-                try{
-                  
-                  for(int i=0; i < int(buffer[1]); i++){
-                    imgWriter.write(buffer[i+2]);
-                    print(i, " : ", hex(buffer[i+2]));
-                  }
-                  println(" ");
-                  
-                  currentFileSize+=(int(buffer[1]));
-                  timer = millis(); // Timer reset
-    
-                }
-                catch(IOException e){
-                  e.printStackTrace();
-                  txtAConsole.setText(txtAConsole.getText()
-                    + "Exception on serial read\n");
-                }
+              // Read stream data and output to jpg file
+              println ("writing image data currentFileSize: ", currentFileSize);
+              try{
                 
-                // Output a response every 128 bytes
-                if(((currentFileSize % 128) == 0) && currentFileSize > 20000){
-                          println("Current Filesize: "+str(currentFileSize)+" Buffer size: "+str(min(64, (totalFileSize-currentFileSize))) + "\n");
-                  
+                for(int i=0; i < int(buffer[1]); i++){
+                  imgWriter.write(buffer[i+2]);
+                  print(i, " : ", hex(buffer[i+2]));
                 }
+                println(" ");
                 
-                cmdComplete = true;
+                currentFileSize+=(int(buffer[1]));
+                
+  
+              }
+              catch(IOException e){
+                e.printStackTrace();
+                txtAConsole.setText(txtAConsole.getText()
+                  + "Exception on serial read\n");
+              }
+              
+              // Output a response every 128 bytes
+              if(((currentFileSize % 128) == 0) && currentFileSize > 20000){
+                 println("Current Filesize: "+str(currentFileSize)+" Buffer size: "+str(min(64, (totalFileSize-currentFileSize))) + "\n");
+                 timer = millis(); // Timer reset
+              }
+                
+         
+       }
+       
+       printExceptionCode(response);
+       
+       switch (response){   
+          case ku8MBSuccess:
+            sendGatewayCmd("+");
+            break;
+          case ku8MBIllegalFunction:
+          case ku8MBIllegalDataAddress:     
+          case ku8MBIllegalDataValue:   
+          case ku8MBSlaveDeviceFailure: 
+          case ku8MBInvalidSlaveID:       
+          case ku8MBInvalidFunction:      
+          case ku8MBResponseTimedOut:    
+          case ku8MBInvalidCRC:
+            gwSerial.clear();
+            delay(10);
+            sendGatewayCmd("-");
+            break;
        }
    
     }
+    
+    imgRead = false;
     return;
 
 }

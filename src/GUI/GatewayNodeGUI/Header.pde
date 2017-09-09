@@ -63,11 +63,9 @@ int timer = 0;
 int errCount = 0;
 char response;
 
-int bufferIndex = 0;
-int bytesToRead = 0;
 byte[] buffer;
 
-int u32StartTime = 0;
+
 
 Serial gwSerial;
 

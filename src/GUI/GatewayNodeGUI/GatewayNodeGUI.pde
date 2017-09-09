@@ -279,18 +279,11 @@ void draw() {
          txtAConsole.setText(txtAConsole.getText() + 
                              "Getting Image of size: " + totalFileSize + "...\n");
                              
-         createImageFile(); 
+         
          // Switch to reading image byte stream in Serial Event handler and start timeout timer
          imgRead = true;
-       
-         response = ku8MBSuccess;
-         bytesToRead = min(BUF_SIZE, (totalFileSize-currentFileSize))+5;
-         bufferIndex = 0;
-         
-         timer = millis();
-         u32StartTime = millis();
-         
          sendGatewayCmd("+\n");
+         thread("processImgInput");
        
        }else if(match(tkn[0],"DEBUG") != null){
          
@@ -306,37 +299,12 @@ void draw() {
        println("Match: "+m[1]);
      }
     }
-    else if(imgRead){
-       printExceptionCode(response);
-       
-       switch (response){   
-          case ku8MBSuccess:
-            sendGatewayCmd("+");
-            break;
-          case ku8MBIllegalFunction:
-          case ku8MBIllegalDataAddress:     
-          case ku8MBIllegalDataValue:   
-          case ku8MBSlaveDeviceFailure: 
-          case ku8MBInvalidSlaveID:       
-          case ku8MBInvalidFunction:      
-          case ku8MBResponseTimedOut:    
-          case ku8MBInvalidCRC:
-            gwSerial.clear();
-            delay(10);
-            sendGatewayCmd("-");
-            break;
-       }
-       
-       response = ku8MBSuccess;
-       bytesToRead = min(BUF_SIZE, (totalFileSize-currentFileSize))+5;
-       
-       bufferIndex = 0;
-       u32StartTime = millis();
-       
-    }
+    
     cmdComplete = false;
     cmdBuf="";
   }
+  
+  
  
 }
 
@@ -370,10 +338,7 @@ void actionPerformed (GUIEvent e) {
 
 void serialEvent (Serial s){
     
-    if(imgRead) {
-      processImgInput(s);
-    }
-   else if(!imgRead){
+    if(!imgRead){
       char inChar = s.readChar();
       cmdBuf += str(inChar);
       
@@ -387,6 +352,6 @@ void serialEvent (Serial s){
       }
       
       print (inChar);
-   }
+    }
     
 }
