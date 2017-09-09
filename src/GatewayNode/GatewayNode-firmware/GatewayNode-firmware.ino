@@ -11,6 +11,7 @@
 ***************************************************************/
 
 #include <SoftwareSerial.h>
+#include "EasyTransfer.h"
 
 // Incresae software serial maximum buffer size 
 #define _SS_MAX_RX_BUFF 256
@@ -19,7 +20,27 @@
 // RX,  TX
 SoftwareSerial xBeeSerial(A0,A1); //RX,TX
 
-EasyTransfer EIn, EOut;
+
+
+void outputStream(Stream &s_in, Stream &s_out, bool printRX = false){
+
+  uint8_t bytesToRead;
+  bytesToRead = s_in.available();
+
+  
+  
+  if(bytesToRead > 0){
+    uint8_t *dataBuf;
+    dataBuf = new uint8_t[min(bytesToRead,MAX_BUF_SIZE)];
+    s_in.readBytes(dataBuf, bytesToRead);
+    
+    for(int i=0; i<bytesToRead; i++){
+      s_out.write(dataBuf[i]);
+    }
+    delete [] dataBuf;  
+  }
+  
+}
 
 void setup() {
   Serial.begin(57600);
@@ -36,28 +57,9 @@ void setup() {
 
 void loop() {
 
-  
-  outputStream(xBeeSerial, Serial);
+  outputStream(xBeeSerial, Serial, true);
   delay(10);
   outputStream(Serial,xBeeSerial);
   delay(10);
-}
-
-
-void outputStream(Stream &s_in, Stream &s_out){
-
-  uint8_t bytesToRead;
-  bytesToRead = s_in.available();
-  
-  if(bytesToRead > 0){
-    uint8_t *dataBuf;
-    dataBuf = new uint8_t[min(bytesToRead,MAX_BUF_SIZE)];
-    s_in.readBytes(dataBuf, bytesToRead);
-    for(int i=0; i<bytesToRead; i++){
-      s_out.write(dataBuf[i]);
-    }
-    delete [] dataBuf;  
-  }
-  
 }
 

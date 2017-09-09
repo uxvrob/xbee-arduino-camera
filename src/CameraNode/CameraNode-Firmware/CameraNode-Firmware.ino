@@ -48,16 +48,10 @@ Macro to generate 32-bit integer from (2) 16-bit words.
 
 /* _____PROJECT INCLUDES_____________________________________________________ */
 // functions to calculate Modbus Application Data Unit CRC
-//#include <util/crc16.h>
-
-
 
 #define lowByte(w)           ((w) & 0xFF)
 #define highByte(w)         (((w) >> 8) & 0xFF)
-#define bitRead(value, bit)     (((value) >> (bit)) & 0x01)
-#define bitSet(value, bit)       ((value) |= (1UL << (bit)))
-#define bitClear(value, bit)       ((value) &= ~(1UL << (bit)))
-#define bitWrite(value, bit, bitvalue) (bitvalue ? bitSet(value, bit) : bitClear(value, bit))
+
 
 boolean debugOn = false;
 
@@ -314,19 +308,41 @@ void takeSnapshotTransmitSaveToSD(image_file_t* ift){
 
 void sendBuffer(uint8_t* buffer, uint8_t bytesToRead){
   uint16_t u16CRC = 0xFFFF;
+
+  uint16_t o = 0;
   
-  Serial.write(0x76);
-  Serial.write(bytesToRead);
+  o+= Serial.write(0x76);
+  o+= Serial.write(bytesToRead);
 
   u16CRC = 0xFFFF;
   
   for (uint8_t i = 0; i < bytesToRead; i++) {
-    u16CRC = _crc16_update(u16CRC, highByte(buffer[i]));
-    u16CRC = _crc16_update(u16CRC, lowByte(buffer[i]));
+    u16CRC = _crc16_update(u16CRC, buffer[i]);
+  }
+
+
+  if(debugOn){
+      Serial.print("CRC LOW :");
+      Serial.print(lowByte(u16CRC),HEX);
+      Serial.print(" HIGH: ");
+      Serial.println(highByte(u16CRC),HEX);
+  
+  }
+  o+= Serial.write(buffer, bytesToRead);
+
+  o+= Serial.write(bytesToRead);
+  o+= Serial.write(bytesToRead);
+  /*
+  o+= Serial.write(lowByte(u16CRC));
+  o+= Serial.write(highByte(u16CRC));
+  */
+  o+= Serial.write(0);
+  
+  if(debugOn) { 
+     Serial.print("Bytes written: ");
+     Serial.println(o,HEX);
   }
   
-  Serial.write(buffer, bytesToRead);
-  Serial.write(u16CRC);
   return;
         
 }
@@ -343,7 +359,7 @@ void sendSnapshotFile(char* filename){
   uint8_t bytesToRead;                          // bytes in transmission buffer
   uint16_t jpglen = imgFile.size();          // Get the size of the image (frame) taken
   uint8_t sendAttempts = 0;
-  uint16_t responseTime = millis();
+  
 
   //Send transmission packet with img file length
   Serial.print(F("AV+CTRANS,"));
@@ -351,8 +367,8 @@ void sendSnapshotFile(char* filename){
   Serial.write(";");
 
   // Sending image via serial
-  
-  while (jpglen > 0 && (millis() - responseTime)<5000){
+  uint16_t responseTime = millis();
+  while (jpglen > 0 && (millis() - responseTime)<10000){
     
     // read IMG_BUF_SIZE bytes at a time;
     if(cmdComplete){
@@ -367,9 +383,7 @@ void sendSnapshotFile(char* filename){
   
         sendBuffer(buffer, bytesToRead);
         
-        jpglen -= bytesToRead;
-        //delayMicroseconds(TRANSMISSION_DELAY);
-        
+        jpglen -= bytesToRead;        
         sendAttempts = 0;
         
       }else if(cmdBuf.equals("-")){
@@ -378,11 +392,13 @@ void sendSnapshotFile(char* filename){
       else {
         if(sendAttempts > 5)
           break;
-        Serial.print(F("INVALID CMD. Attempt "));
-        Serial.print(sendAttempts,HEX);
-        Serial.println(F(" of 5"));
+        if(debugOn){
+          Serial.print(F("INVALID CMD. Attempt "));
+          Serial.print(sendAttempts,HEX);
+          Serial.println(F(" of 5"));
+        }
         sendAttempts++;
-        delay(1000);        
+        delay(100);        
       }
 
       responseTime = millis();
@@ -392,7 +408,7 @@ void sendSnapshotFile(char* filename){
     processSerial();
   }
 
-  if(jpglen >0) Serial.println("Transfer issues...");
+  if(jpglen >0 && debugOn) Serial.println("Transfer issues...");
   
   imgFile.close();
   
