@@ -21,30 +21,6 @@
 #define SER_BAUD_RATE 57600    // Serial baud rate
 #define TRANSMISSION_DELAY 100 // in microseconds (us)
 
-/* _____UTILITY MACROS_______________________________________________________ */
-/**
-@def lowWord(ww) ((uint16_t) ((ww) & 0xFFFF))
-Macro to return low word of a 32-bit integer.
-*/
-#define lowWord(ww) ((uint16_t) ((ww) & 0xFFFF))
-
-
-/**
-@def highWord(ww) ((uint16_t) ((ww) >> 16))
-Macro to return high word of a 32-bit integer.
-*/
-#define highWord(ww) ((uint16_t) ((ww) >> 16))
-
-
-/**
-@def LONG(hi, lo) ((uint32_t) ((hi) << 16 | (lo)))
-Macro to generate 32-bit integer from (2) 16-bit words.
-*/
-#define LONG(hi, lo) ((uint32_t) ((hi) << 16 | (lo)))
-
-
-
-
 
 /* _____PROJECT INCLUDES_____________________________________________________ */
 // functions to calculate Modbus Application Data Unit CRC
@@ -56,13 +32,12 @@ Macro to generate 32-bit integer from (2) 16-bit words.
 boolean debugOn = false;
 
 typedef struct {
-  char szName[25];
+  char szName[15];
   uint16_t uSize;
-  uint16_t uCRC32;
 } image_file_t;
 
 // Command buffer initialization
-String cmdBuf;
+String cmdBuf ="";
 boolean cmdComplete = false;
 
 // Serial and camera connections
@@ -89,32 +64,6 @@ uint16_t _crc16_update(uint16_t crc, uint8_t a) {
       crc = (crc >> 1);
   }
   return crc;
-}
-
-// Get image size from the camera 
-void getImageSize(){
-  
-  uint8_t imgsize = cam.getImageSize();
-  
-  Serial.print(F("AV+IMGS,"));
-  if (imgsize == VC0706_640x480) Serial.println(VC0706_640x480);
-  if (imgsize == VC0706_320x240) Serial.println(VC0706_320x240);
-  if (imgsize == VC0706_160x120) Serial.println(VC0706_160x120);
-  
-}
-
-void getCameraVersion(){
-  
-  // Print out the camera version information (optional)  
-  char *reply = cam.getVersion();
-  
-  if (reply == 0) {
-    Serial.println(F("AV+ERR,0x0000"));
-  } else {
-    Serial.print(F("AV+CSV,"));
-    Serial.println(reply);
-  }
-  
 }
 
 void printDirectory(File dir, int numTabs) {
@@ -229,9 +178,6 @@ void takeSnapshotSaveToSD(image_file_t* ift){
     
   }
 
-  // Determine CRC of file
-  ift->uCRC32 = 0;
-
   imgFile.flush();
   imgFile.close();
 
@@ -307,19 +253,20 @@ void takeSnapshotTransmitSaveToSD(image_file_t* ift){
 }
 
 void sendBuffer(uint8_t* buffer, uint8_t bytesToRead){
-  uint16_t u16CRC = 0xFFFF;
+  //uint16_t u16CRC = 0xFFFF;
 
   uint16_t o = 0;
   
   o+= Serial.write(0x76);
   o+= Serial.write(bytesToRead);
 
+  /*
   u16CRC = 0xFFFF;
   
   for (uint8_t i = 0; i < bytesToRead; i++) {
     u16CRC = _crc16_update(u16CRC, buffer[i]);
   }
-
+  
 
   if(debugOn){
       Serial.print("CRC LOW :");
@@ -328,6 +275,7 @@ void sendBuffer(uint8_t* buffer, uint8_t bytesToRead){
       Serial.println(highByte(u16CRC),HEX);
   
   }
+  */
   o+= Serial.write(buffer, bytesToRead);
 
   o+= Serial.write(bytesToRead);
@@ -359,12 +307,20 @@ void sendSnapshotFile(char* filename){
   uint8_t bytesToRead;                          // bytes in transmission buffer
   uint16_t jpglen = imgFile.size();          // Get the size of the image (frame) taken
   uint8_t sendAttempts = 0;
-  
+
+  if(jpglen == 0){
+    Serial.println(F("AV+ERR,FILE_SIZE_NULL;"));
+    imgFile.rewindDirectory();
+    imgFile.close();
+    return;
+  }
 
   //Send transmission packet with img file length
   Serial.print(F("AV+CTRANS,"));
   Serial.print(jpglen);
   Serial.write(";");
+
+  
 
   // Sending image via serial
   uint16_t responseTime = millis();
@@ -393,7 +349,6 @@ void sendSnapshotFile(char* filename){
         if(sendAttempts > 5)
           break;
         if(debugOn){
-          Serial.print(F("INVALID CMD. Attempt "));
           Serial.print(sendAttempts,HEX);
           Serial.println(F(" of 5"));
         }
@@ -408,8 +363,8 @@ void sendSnapshotFile(char* filename){
     processSerial();
   }
 
-  if(jpglen >0 && debugOn) Serial.println("Transfer issues...");
-  
+  if(jpglen >0 && debugOn) Serial.println(F("AV+ERR,TIMEOUT"));
+  imgFile.rewindDirectory();
   imgFile.close();
   
 
@@ -474,8 +429,14 @@ void loop(){
         
       }else if(cmdBuf.equals("AV+RECF")){
         if(getRecentImageFilename(ift->szName)){
-          Serial.print(F("Recent image: "));
-          Serial.println(ift->szName);
+
+          File f = SD.open(ift->szName, FILE_READ);
+          Serial.print(F("Recent: "));
+          Serial.print(ift->szName);
+          Serial.print(F(" Size: "));
+          Serial.println(f.size());
+          f.rewindDirectory();
+          f.close();
         }
         else
           Serial.println(F("No file created yet"));

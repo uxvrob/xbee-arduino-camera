@@ -1,4 +1,4 @@
-/*************************************************************** //<>// //<>//
+/*************************************************************** 
 * Gateway Node GUI 
 *
 * @author Robbie Sharma robbie -at- rsconsulting.ca
@@ -7,91 +7,6 @@
 * 
 ***************************************************************/
 
-import controlP5.*;
-import interfascia.*;
-import processing.serial.*;
-
-// Serial parameters
-/********************************************************************
- * Determine active serial port in Serial.list()[x] for port refernece
- * by uncommenting printArray block in setup() method
- *******************************************************************/
-
-// Camera Node - COM3
-// Gateway Node - COM4
-
-final String SER_PORT   = "COM4";       //Serial.list()[2];
-final int SER_BAUD_RATE = 57600;      //This should match the Serial baud rate in the GatewayNode firmware
-final int BUF_SIZE      = 64;              
-
-// Window parameters
-
-final int bgColor = 200;
-
-// Button Parameters
-
-final int btnWidth = 100;
-final int btnHeight = 30;
-
-// Image pixel size in GUI
-
-final int imgSizeWidth =  640;
-final int imgSizeHeight = 480;
-
-// Image streaming timeout
-
-final int TIMEOUT = 30000;  // in milliseconds (ms)
-
-// GUI Controls - Interfascia
-GUIController c;
-IFLookAndFeel defaultLook;
-IFButton getSnapshotBtn;
-IFButton getRecentSnapBtn;
-IFProgressBar progress;
-IFLabel progressLbl;
-
-// GUI Controls - ControlP5
-ControlP5 cp5;
-Textarea txtAConsole;
-
-// Command Parser/Buffer
-
-String cmdBuf = "";
-boolean cmdComplete = false;
-boolean imgRead;
-
-// Snapshot Image File Parameters
-
-PImage imgFile;
-OutputStream imgWriter;
-String recvImgFileName="";
-
-int totalFileSize = 0;
-int currentFileSize = 0;
-int timer = 0;
-int errCount = 0;
-char response;
-
-int bufferIndex = 0;
-int bytesToRead = 0;
-byte[] buffer;
-
-int u32StartTime = 0;
-
-Serial gwSerial;
-
-/******************************************************
-* Exception Codes
-*******************************************************/
-final char ku8MBSuccess               = 0x00;
-final char ku8MBIllegalFunction       = 0x01;
-final char ku8MBIllegalDataAddress     = 0x02;
-final char ku8MBIllegalDataValue     = 0x03;
-final char ku8MBSlaveDeviceFailure     = 0x04;
-final char ku8MBInvalidSlaveID       = 0xE0;
-final char ku8MBInvalidFunction       = 0xE1;
-final char ku8MBResponseTimedOut     = 0xE2;
-final char ku8MBInvalidCRC         = 0xE3;
 
 void setup() {
   
@@ -194,7 +109,7 @@ void setup() {
   progress.setProgress(norm(currentFileSize, 0,totalFileSize));
   progressLbl.setLabel("Transfer Progress "+str(round(progress.getProgress()*100))+"%"+" File Size: "+str(float(totalFileSize/1024))+"kb or "+str(totalFileSize)+" bytes");
   
-}
+} //<>//
 
 
 // Main program draw loop 
@@ -367,8 +282,15 @@ void draw() {
          createImageFile(); 
          // Switch to reading image byte stream in Serial Event handler and start timeout timer
          imgRead = true;
+       
+         response = ku8MBSuccess;
+         bytesToRead = min(BUF_SIZE, (totalFileSize-currentFileSize))+5;
+         bufferIndex = 0;
+         
          timer = millis();
-         sendGatewayCmd("+");
+         u32StartTime = millis();
+         
+         sendGatewayCmd("+\n");
        
        }else if(match(tkn[0],"DEBUG") != null){
          
@@ -390,7 +312,6 @@ void draw() {
        switch (response){   
           case ku8MBSuccess:
             sendGatewayCmd("+");
-            
             break;
           case ku8MBIllegalFunction:
           case ku8MBIllegalDataAddress:     
@@ -416,33 +337,7 @@ void draw() {
     cmdComplete = false;
     cmdBuf="";
   }
-  
  
-}
-
-
-
-void sendGatewayCmd(String cmd){
-  
-  gwSerial.write(cmd);
-  gwSerial.write(10); 
-
-}
-
-void createImageFile(){
-  
-  recvImgFileName = "IMAGE_";
-  recvImgFileName += String.valueOf(year());
-  recvImgFileName += String.valueOf(month());
-  recvImgFileName += String.valueOf(day());
-  recvImgFileName += "-";
-  recvImgFileName += String.valueOf(hour());
-  recvImgFileName += String.valueOf(minute());
-  recvImgFileName += ".jpg";
-  
-  imgWriter = createOutput(sketchPath()+"/"+recvImgFileName);
-  currentFileSize =0;
-  
 }
 
 void actionPerformed (GUIEvent e) {
@@ -473,157 +368,11 @@ void actionPerformed (GUIEvent e) {
   }
 }
 
-
-
-int word(byte high, byte low) {
-  int ret_val = low;
-  ret_val += (high << 8);
-  return ret_val;
-}
-
-
-
-void printExceptionCode(char e){
-  
-  switch(e){
-    case ku8MBIllegalFunction:
-      println("Illegal function");
-      break;
-    case ku8MBIllegalDataValue:
-      println("Illegal Data Value");
-      break;
-    case ku8MBInvalidCRC:
-      println("Invalid CRC");
-      break;
-    case ku8MBResponseTimedOut: 
-    case ku8MBIllegalDataAddress: 
-    case ku8MBSlaveDeviceFailure:
-    case ku8MBInvalidSlaveID:       
-    case ku8MBInvalidFunction:      
-       println("Invalid response");
-       break;
-    
-  }
-  
-}
-
-int _crc16_update(int crc, byte a) {
-
-  crc ^= a;
-  for (int i = 0; i < 8; ++i)
-  {
-    if ((crc & 1)==1)
-      crc = (crc >> 1) ^ 0xA001;
-    else
-      crc = (crc >> 1);
-  }
-  return crc;
-}
-
-void processImgInput(Serial s){    
-        
-    while(bytesToRead >=0 && (response != ku8MBSuccess)){
-      
-          if(s.available()>0){
-              
-              buffer[bufferIndex++] = byte(s.read());
-              if(buffer[0] == 0){  // discard any 0 bytes;
-                  bufferIndex--;   
-                  return;
-              }
-              
-              bytesToRead--;
-
-          }else{
-             delay(10); 
-          }
-          
-          if(bufferIndex == 2){
-            if(buffer[0] != 0x76) response = ku8MBIllegalFunction; 
-            if(int(buffer[1]) != (bytesToRead-3)) {
-              //println("Expected: ",bytesToRead-3,"Received: ",buffer[1]);
-              response = ku8MBIllegalDataValue;
-              cmdComplete = true;
-              return;
-            }
-          }
-          
-          if (millis() > (u32StartTime + 1000)) {
-            response = ku8MBResponseTimedOut;
-            println("Timed out");
-            cmdComplete = true;
-            return;
-          }
-          
-          
-     }
-     
-     if(response == ku8MBSuccess && bufferIndex >= 2){
-           /*     
-           int u16CRC = 0xFFFF;
-            
-            for(int i=0; i < int(buffer[1]); i++){
-              print(i,":",hex(buffer[i+2]), " ");
-              u16CRC = _crc16_update(u16CRC, buffer[i+2]);
-            }
-            
-            if ((u16CRC != word(buffer[bufferIndex - 3], buffer[bufferIndex - 2]))) {
-                response = ku8MBInvalidCRC;
-                println("invalid crc calculated:",hex(u16CRC),"received high: ",hex(buffer[bufferIndex - 3]), "low: ", hex(buffer[bufferIndex - 2]));
-            }
-            else println("valid CRC");
-            
-            */
-            
-            if((int(buffer[1]) != int(buffer[bufferIndex-3])) && (int(buffer[1]) != int(buffer[bufferIndex-2]))){
-                println("invalid crc calculated:",int(buffer[1]),"received high: ",int(buffer[bufferIndex - 3]), "low: ", int(buffer[bufferIndex - 2]));
-            
-              response = ku8MBInvalidCRC;
-              cmdComplete = true;
-            }            
-     }
-          
-     if((totalFileSize-currentFileSize) > 0  && response == ku8MBSuccess){
-  
-              
-              // Read stream data and output to jpg file
-              println ("writing image data currentFileSize: ", currentFileSize);
-              try{
-                
-                for(int i=0; i < int(buffer[1]); i++){
-                  imgWriter.write(buffer[i+2]);
-                }
-                
-                currentFileSize+=(int(buffer[1]));
-                timer = millis(); // Timer reset
-  
-              }
-              catch(IOException e){
-                e.printStackTrace();
-                txtAConsole.setText(txtAConsole.getText()
-                  + "Exception on serial read\n");
-              }
-              
-              // Output a response every 128 bytes
-              if(((currentFileSize % 128) == 0) && currentFileSize > 20000){
-                        println("Current Filesize: "+str(currentFileSize)+" Buffer size: "+str(min(64, (totalFileSize-currentFileSize))) + "\n");
-                
-              }
-              
-              cmdComplete = true;
-     }
-   
-     
-     return;
-
-}
-
 void serialEvent (Serial s){
     
     if(imgRead) {
       processImgInput(s);
     }
-    
    else if(!imgRead){
       char inChar = s.readChar();
       cmdBuf += str(inChar);
