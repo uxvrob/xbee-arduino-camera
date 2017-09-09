@@ -10,7 +10,9 @@ void printExceptionCode(char e){
     case ku8MBInvalidCRC:
       println("Invalid CRC");
       break;
-    case ku8MBResponseTimedOut: 
+    case ku8MBResponseTimedOut:
+      println("Response Timed Out");
+      break;
     case ku8MBIllegalDataAddress: 
     case ku8MBSlaveDeviceFailure:
     case ku8MBInvalidSlaveID:       
@@ -26,18 +28,23 @@ void processImgInput(){
     timer = millis();
     createImageFile(); 
     // LOOP UNTIL ENTIRE FILE IS READ
+    
+    sendGatewayCmd("+");
+    delay(10);
+   
     while((totalFileSize-currentFileSize) > 0 && (millis()-timer)<TIMEOUT){
       
       char response = ku8MBSuccess;
       int bufferIndex = 0;
-      int u32StartTime = 0;
+      int u32StartTime = millis();
       int bytesToRead = min(BUF_SIZE, (totalFileSize-currentFileSize))+5;
       
-      while(bytesToRead > 0 && (response != ku8MBSuccess)){
-        
+      while(bytesToRead > 0 && (response == ku8MBSuccess)){
+           
             if(gwSerial.available()>0){
                 
-                buffer[bufferIndex++] = byte(gwSerial.read());
+                buffer[bufferIndex++] = (byte)gwSerial.read();
+                              
                 if(buffer[0] == 0){  // discard any 0 bytes;
                     bufferIndex--;   
                     continue;
@@ -45,10 +52,7 @@ void processImgInput(){
                 
                 bytesToRead--;
                 
-                println("Bytes left: ", bytesToRead);
   
-            }else{
-               delay(10); 
             }
             
             if(bufferIndex == 2){
@@ -60,9 +64,8 @@ void processImgInput(){
               }
             }
             
-            if (millis() > (u32StartTime + 1000)) {
+            if (millis() > (u32StartTime + 2000)) {
               response = ku8MBResponseTimedOut;
-              println("Timed out");
               break;
             }
             
@@ -90,8 +93,6 @@ void processImgInput(){
                   println("invalid crc calculated:",int(buffer[1]),"received high: ",int(buffer[bufferIndex - 3]), "low: ", int(buffer[bufferIndex - 2]));
               
                 response = ku8MBInvalidCRC;
-                cmdComplete = true;
-                return;
               }            
        }
             
@@ -99,14 +100,17 @@ void processImgInput(){
     
                 
               // Read stream data and output to jpg file
-              println ("writing image data currentFileSize: ", currentFileSize);
               try{
+                
                 
                 for(int i=0; i < int(buffer[1]); i++){
                   imgWriter.write(buffer[i+2]);
-                  print(i, " : ", hex(buffer[i+2]));
+                  /*
+                  if(i%5 == 0)
+                    print("[",i, " : ", hex(buffer[i+2]),"]");
+                    */
                 }
-                println(" ");
+               
                 
                 currentFileSize+=(int(buffer[1]));
                 
@@ -119,7 +123,7 @@ void processImgInput(){
               }
               
               // Output a response every 128 bytes
-              if(((currentFileSize % 128) == 0) && currentFileSize > 20000){
+              if(((currentFileSize % 128) == 0)){
                  println("Current Filesize: "+str(currentFileSize)+" Buffer size: "+str(min(64, (totalFileSize-currentFileSize))) + "\n");
                  timer = millis(); // Timer reset
               }
@@ -142,11 +146,21 @@ void processImgInput(){
           case ku8MBResponseTimedOut:    
           case ku8MBInvalidCRC:
             gwSerial.clear();
-            delay(10);
             sendGatewayCmd("-");
             break;
        }
    
+    }
+    
+    try{
+         imgWriter.flush();
+         imgWriter.close();
+       }
+       catch(IOException e){
+         e.printStackTrace();
+         txtAConsole.setText(txtAConsole.getText()+
+                             "Exception generated on file close...\n");
+                            
     }
     
     imgRead = false;

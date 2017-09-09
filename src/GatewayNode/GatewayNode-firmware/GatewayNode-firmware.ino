@@ -11,7 +11,6 @@
 ***************************************************************/
 
 #include <SoftwareSerial.h>
-#include "EasyTransfer.h"
 
 // Incresae software serial maximum buffer size 
 #define _SS_MAX_RX_BUFF 256

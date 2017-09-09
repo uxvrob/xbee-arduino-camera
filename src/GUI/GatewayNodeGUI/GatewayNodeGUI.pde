@@ -282,7 +282,7 @@ void draw() {
          
          // Switch to reading image byte stream in Serial Event handler and start timeout timer
          imgRead = true;
-         sendGatewayCmd("+\n");
+         
          thread("processImgInput");
        
        }else if(match(tkn[0],"DEBUG") != null){
@@ -304,6 +304,8 @@ void draw() {
     cmdBuf="";
   }
   
+  
+  if(!imgRead) processSerial(gwSerial);
   
  
 }
@@ -336,7 +338,7 @@ void actionPerformed (GUIEvent e) {
   }
 }
 
-void serialEvent (Serial s){
+void processSerial (Serial s){
     
     if(!imgRead){
       char inChar = s.readChar();
@@ -350,8 +352,6 @@ void serialEvent (Serial s){
       if(cmdBuf.length() > 100){
         cmdBuf="";
       }
-      
-      print (inChar);
     }
     
 }
