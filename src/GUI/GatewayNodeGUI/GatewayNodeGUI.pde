@@ -192,38 +192,9 @@ void draw() {
         imgRead = false;
         cmdComplete=false;
     }
-    else if((currentFileSize == totalFileSize)){
-              /**********************************************************
-              ******************** IMG TRANSFER COMPLETE*****************
-              **********************************************************/
-             try{
-               imgWriter.flush();
-               imgWriter.close();
-             }
-             catch(IOException e){
-               e.printStackTrace();
-               txtAConsole.setText(txtAConsole.getText()+
-                                   "Exception generated on file close...\n");
-                                   
-               imgRead = false;
-               return;
-             }
-             
+    else if((currentFileSize == totalFileSize)){             
 
-             txtAConsole.setText(txtAConsole.getText()
-                                 +"Transfer complete. File: "+recvImgFileName + "\n");
-             try{
-               imgFile = loadImage(sketchPath() + "/" + recvImgFileName);
-               txtAConsole.setText(txtAConsole.getText()
-                                 + "New image width x height: "+str(imgFile.width)+" x " + str(imgFile.height)+ "\n\n");
-             }
-             catch(Exception e){
-                 e.printStackTrace();
-                 txtAConsole.setText(txtAConsole.getText()
-                               +"Could not load image... currentFileSize: "+currentFileSize + "\n\n");
-  
-                 imgFile = loadImage(sketchPath() +"/default.jpg");
-             }
+             
 
              imgRead = false;
       

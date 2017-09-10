@@ -126,7 +126,7 @@ void processImgInput(){
               }
               
               // Output a response every 128 bytes
-              if(((currentFileSize % 128) == 0)){
+              if(((currentFileSize % 32) == 0) && currentFileSize > 45800){
                  println("Current Filesize: "+str(currentFileSize)+" Buffer size: "+str(min(64, (totalFileSize-currentFileSize))) + "\n");
                  timer = millis(); // Timer reset
               }
@@ -158,17 +158,34 @@ void processImgInput(){
    
     }
     
+    
     try{
          imgWriter.flush();
          imgWriter.close();
-       }
-       catch(IOException e){
-         e.printStackTrace();
-         txtAConsole.setText(txtAConsole.getText()+
-                             "Exception generated on file close...\n");
+     }
+     catch(IOException e){
+       e.printStackTrace();
+       txtAConsole.setText(txtAConsole.getText()+
+                           "Exception generated on file close...\n");
                             
     }
-    
+    if(currentFileSize == totalFileSize){
+      println("Image receipt successful!!");
+      txtAConsole.setText(txtAConsole.getText()
+                                 +"Transfer complete. File: "+recvImgFileName + "\n");
+       try{
+         imgFile = loadImage(sketchPath() + "/" + recvImgFileName);
+         txtAConsole.setText(txtAConsole.getText()
+                           + "New image width x height: "+str(imgFile.width)+" x " + str(imgFile.height)+ "\n\n");
+       }
+       catch(Exception e){
+           e.printStackTrace();
+           txtAConsole.setText(txtAConsole.getText()
+                         +"Could not load image... currentFileSize: "+currentFileSize + "\n\n");
+  
+           imgFile = loadImage(sketchPath() +"/default.jpg");
+       }
+    }
     imgRead = false;
     return;
 

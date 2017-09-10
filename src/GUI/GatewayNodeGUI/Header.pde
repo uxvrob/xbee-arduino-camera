@@ -11,7 +11,7 @@ import processing.serial.*;
 // Camera Node - COM3
 // Gateway Node - COM4
 
-final String SER_PORT   = "COM4";       //Serial.list()[2];
+final String SER_PORT   = "COM3";       //Serial.list()[2];
 final int SER_BAUD_RATE = 57600;      //This should match the Serial baud rate in the GatewayNode firmware
 final int BUF_SIZE      = 64;              
 
