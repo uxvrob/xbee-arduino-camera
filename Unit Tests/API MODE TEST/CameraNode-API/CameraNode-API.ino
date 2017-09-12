@@ -4,6 +4,9 @@
 #define CAM_RX_PIN 2
 #define CAM_TX_PIN 3
 #define SER_BAUD_RATE 57600         // Serial baud rate
+#define GATEWAY_SH_ADDR 0x0013A200
+#define GATEWAY_SL_ADDR 0x415B8949
+
 
 bool cmdComplete = false;
 String cmdBuf = "";
@@ -13,7 +16,12 @@ CameraNode camNode = CameraNode(CAM_RX_PIN, CAM_TX_PIN);
 void setup() {
 
   Serial.begin(SER_BAUD_RATE);
-  //camNode.setSerial(&Serial);
+  camNode.setXbeeSerial(Serial);
+  if(camNode.setRxAddress(GATEWAY_SH_ADDR,GATEWAY_SL_ADDR)){
+    camNode.printXBAddress();
+  }
+  else
+    Serial.println("UNSUCCESSFUL setting address");
   camNode.begin();
 
 }

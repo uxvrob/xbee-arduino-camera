@@ -24,6 +24,7 @@ class CameraNode : public Node{
 
     void begin();
     void takeSnapshotSaveToSD(image_file_t*);
+    void sendSnapshotFile(char*);
 
 
 	private:

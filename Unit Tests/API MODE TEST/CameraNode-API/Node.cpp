@@ -10,23 +10,28 @@
 
 
 Node::Node():
-_s(&Serial)
+_s(&Serial),
+_xbee(new XBee()),
+_response(new XBeeResponse()),
+_rx(new ZBRxResponse()),
+_txStatus(new ZBTxStatusResponse()),
+_addr64(new XBeeAddress64())
 {
 	
 }
 
-void Node::setSerial(Stream* s){
+void Node::setPrintSerial(Stream* s){
   _s = s;
 }
+
+
 
 void Node::begin(){
 
   // see if the card is present and can be initialized:
   if(SD_CHIP_SELECT_PIN != 10) pinMode(10, OUTPUT);
-
   if (!SD.begin(SD_CHIP_SELECT_PIN)) _s->println(F("AV+ERR,0x01;"));
-
-   
+  
 }
 
 void Node::debugOn(){
@@ -37,6 +42,69 @@ void Node::debugOff(){
   _debugOn = false;
 }
 
+void Node::setXbeeSerial(Stream& ser){
+
+  this->_xbee->setSerial(ser);
+  /*
+  if(!ser)
+    ser.begin(SER_XBEE_BAUD_RATE);
+  */
+}
+
+bool Node::setRxAddress(uint32_t msb, uint32_t lsb){
+  _addr64->setMsb(msb);
+  _addr64->setLsb(lsb);
+
+  if(_addr64->getMsb() == msb && _addr64->getLsb() == lsb)
+    return true;
+  else return false;
+  
+}
+
+uint8_t Node::sendPayload(uint8_t* payload, uint8_t p_length){
+
+  uint8_t result = ku8XBSuccess;
+  ZBTxRequest _zbTx = ZBTxRequest(this->_addr64, payload, p_length);
+
+  _xbee->send(_zbTx);
+
+  if(_xbee->readPacket(500)){
+      if (_xbee->getResponse().getApiId() == ZB_TX_STATUS_RESPONSE) {
+        
+         _xbee->getResponse().getZBTxStatusResponse(*_txStatus);
+
+      // get the delivery status, the fifth byte
+      if (_txStatus->getDeliveryStatus() == SUCCESS) {
+
+        result = ku8XBSuccess;
+
+      } else {
+        // the remote XBee did not receive our packet. is it powered on?
+        result = ku8XBDeliveryError;
+      }
+    }
+    
+  }else if (_xbee->getResponse().isError()){
+    _s->print("Error reading packet.  Error code: ");  
+    _s->println(_xbee->getResponse().getErrorCode());
+    result = ku8XBPacketError;
+  }
+  else{
+    result = ku8XBResponseTimedOut;
+  }
+ 
+  
+  return result;  
+  
+}
+
+void Node::printXBAddress(){
+
+  _s->print("MSB: ");
+  _s->print(_addr64->getMsb(),HEX);
+  _s->print(" LSB: ");
+  _s->println(_addr64->getLsb(),HEX);
+}
 
 void Node::printDirectory(File dir, int numTabs) {
   while (true) {
