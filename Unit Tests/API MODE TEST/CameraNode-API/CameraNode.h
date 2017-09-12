@@ -3,22 +3,34 @@
 
 #include <Node.h>
 #include <SoftwareSerial.h>
+#include <Adafruit_VC0706.h>
 
 #define CAM_RX_PIN 2
 #define CAM_TX_PIN 3
+#define IMG_BUF_SIZE 64         // Byte batch of image to send via Serial
 
-class CameraNode : public Node {
+typedef struct {
+  char szName[15];
+  uint16_t uSize;
+} image_file_t;
+
+
+class CameraNode : public Node{
 	
 	public:
 
     CameraNode(int,int);
-    void takePicture();
 
- 
-	
+
+    void begin();
+    void takeSnapshotSaveToSD(image_file_t*);
+
+
 	private:
+    Node* _nd;
 	  SoftwareSerial* _camConn;
-    Adafruit_VC0706 _cam;
+    Adafruit_VC0706* _cam;
+    bool _debugOn;
 
 };
 

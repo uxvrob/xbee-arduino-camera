@@ -14,34 +14,33 @@
 #include <SoftwareSerial.h>      
 #include <Time.h>
 
-#include <Adafruit_VC0706.h>
+#define SD_CHIP_SELECT_PIN 4        // SD card chip select
 
-#define IMG_BUF_SIZE 64         // Byte batch of image to send via Serial
-#define SD_CHIP_SELECT_PIN 4    // SD card chip select
 
 class Node {
 	
 	public:
+
+    Stream* _s;
 	  
 	  Node();
 	  
 	  void begin();
     void setSerial(Stream*);
-	  /*void send();
-	  void send_packet();
-	  void receive();
-	  void receive_packet();
-	  */
+
+    
+
+    void debugOn();
+    void debugOff();
 
     void printDirectory(File, int);
-    bool generateImageFilename(char*);
+    bool getRecentImageFilename(char*);
+    bool generateImageFilename(char*); 
 	
-	private:
-
-    Stream* _s;
-
-
-	
+	protected:
+  
+    bool _debugOn;
+    
 	
 	
 };
