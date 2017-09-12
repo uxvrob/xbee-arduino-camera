@@ -7,7 +7,7 @@
 
 #define CAM_RX_PIN 2
 #define CAM_TX_PIN 3
-#define BUF_SIZE 64         // Byte batch of image to send via Serial
+#define IMG_BUF_SIZE 64         // Byte batch of image to send via Serial
 
 typedef struct {
   char szName[15];

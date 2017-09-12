@@ -11,7 +11,11 @@
 
 Node::Node():
 _s(&Serial),
-_xbee(new XBeeWithCallbacks())
+_xbee(new XBee()),
+_response(new XBeeResponse()),
+_rx(new ZBRxResponse()),
+_txStatus(new ZBTxStatusResponse()),
+_addr64(new XBeeAddress64())
 {
 	
 }
@@ -27,14 +31,7 @@ void Node::begin(){
   // see if the card is present and can be initialized:
   if(SD_CHIP_SELECT_PIN != 10) pinMode(10, OUTPUT);
   if (!SD.begin(SD_CHIP_SELECT_PIN)) _s->println(F("AV+ERR,0x01;"));
-
-  this->beginCallbacks();
   
-}
-
-void Node::spin(){
-
-  _xbee->loop();
 }
 
 void Node::debugOn(){
@@ -47,65 +44,41 @@ void Node::debugOff(){
 
 void Node::setXbeeSerial(Stream& ser){
 
-  _xbee->setSerial(ser);
+  this->_xbee->setSerial(ser);
   /*
   if(!ser)
     ser.begin(SER_XBEE_BAUD_RATE);
   */
 }
 
-void Node::setRxAddress(uint32_t msb, uint32_t lsb){
-  _msb = msb;
-  _lsb = lsb;
+bool Node::setRxAddress(uint32_t msb, uint32_t lsb){
+  _addr64->setMsb(msb);
+  _addr64->setLsb(lsb);
+
+  if(_addr64->getMsb() == msb && _addr64->getLsb() == lsb)
+    return true;
+  else return false;
   
 }
-void Node::printXBAddress(){
 
-  _s->print("MSB: ");
-  _s->print(_msb,HEX);
-  _s->print(" LSB: ");
-  _s->println(_lsb,HEX);
-}
-/*
 uint8_t Node::sendPayload(char* payload, uint8_t p_length){
    return sendPayload(payload, p_length);
 }
-*/
 
-void Node::beginCallbacks(){
-  
-  _xbee->onPacketError(printErrorCb, (uintptr_t)(Print*)&_s);
-  _xbee->onTxStatusResponse(printErrorCb, (uintptr_t)(Print*)&_s);
-  _xbee->onZBTxStatusResponse(printErrorCb, (uintptr_t)(Print*)&_s);
-
-  _xbee->onZBRxResponse(this->_zbReceiveCb);
-  //_xbee->onRx16Response(receive16);
-  //_xbee->onRx64Response(receive64);
-  
-}
-
-void Node::setReceiveCb(void (*zbReceiveCb)()){
-  _zbReceiveCb = zbReceiveCb;
-}
-
-uint8_t Node::sendPayload(uint8_t payload[], uint8_t p_length){
+uint8_t Node::sendPayload(uint8_t* payload, uint8_t p_length){
 
   uint8_t result = ku8XBSuccess;
+  ZBTxRequest _zbTx = ZBTxRequest(this->_addr64, payload, p_length);
 
-  _s->println("Sending payload...");
-  XBeeAddress64 addr64 = XBeeAddress64(_msb, _lsb);
-  ZBTxRequest zbTx = ZBTxRequest(addr64, payload, p_length);
-  ZBTxStatusResponse txStatus = ZBTxStatusResponse();
-  
-  _xbee->send(zbTx);
-  
+  _xbee->send(_zbTx);
+
   if(_xbee->readPacket(500)){
       if (_xbee->getResponse().getApiId() == ZB_TX_STATUS_RESPONSE) {
         
-         _xbee->getResponse().getZBTxStatusResponse(txStatus);
+         _xbee->getResponse().getZBTxStatusResponse(*_txStatus);
 
       // get the delivery status, the fifth byte
-      if (txStatus.getDeliveryStatus() == SUCCESS) {
+      if (_txStatus->getDeliveryStatus() == SUCCESS) {
 
         result = ku8XBSuccess;
 
@@ -116,8 +89,8 @@ uint8_t Node::sendPayload(uint8_t payload[], uint8_t p_length){
     }
     
   }else if (_xbee->getResponse().isError()){
-    //_s->print("Error reading packet.  Error code: ");  
-    //_s->println(_xbee->getResponse().getErrorCode());
+    _s->print("Error reading packet.  Error code: ");  
+    _s->println(_xbee->getResponse().getErrorCode());
     result = ku8XBPacketError;
   }
   else{
@@ -127,6 +100,14 @@ uint8_t Node::sendPayload(uint8_t payload[], uint8_t p_length){
   
   return result;  
   
+}
+
+void Node::printXBAddress(){
+
+  _s->print("MSB: ");
+  _s->print(_addr64->getMsb(),HEX);
+  _s->print(" LSB: ");
+  _s->println(_addr64->getLsb(),HEX);
 }
 
 void Node::printDirectory(File dir, int numTabs) {

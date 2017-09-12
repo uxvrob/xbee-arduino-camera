@@ -1,62 +1,61 @@
-#include "Node.h"
-#include "CameraNode.h"
+#include <XBee.h>
+#include <Printers.h>
 
-#define CAM_RX_PIN 2
-#define CAM_TX_PIN 3
 #define SER_BAUD_RATE 57600         // Serial baud rate
 #define GATEWAY_SH_ADDR 0x0013A200
 #define GATEWAY_SL_ADDR 0x415B8949
 
-
-bool cmdComplete = false;
-
 uint8_t payload[] = { 3, 2 };
 
-char cmdBuf[25];
+XBee xbee = XBee();
+XBeeAddress64 addr64 = XBeeAddress64(GATEWAY_SH_ADDR, GATEWAY_SL_ADDR);
+ZBTxRequest zbTx = ZBTxRequest(addr64, payload, sizeof(payload));
+ZBTxStatusResponse txStatus = ZBTxStatusResponse();
 
-CameraNode camNode = CameraNode(CAM_RX_PIN, CAM_TX_PIN);
 
 void setup() {
 
   Serial.begin(SER_BAUD_RATE);
-  camNode.setXbeeSerial(Serial);
-  camNode.setRxAddress(GATEWAY_SH_ADDR,GATEWAY_SL_ADDR);
-  camNode.setReceiveCb(zbCallback);
-  camNode.begin();
+  xbee.setSerial(Serial);
 
 }
 
-/*
-void loop(){
-  
-  image_file_t* ift;
-  ift = new image_file_t[1];
-
-  camNode.getRecentImageFilename(ift->szName);
-  
-  Serial.println(ift->szName);
-  Serial.println("Response: ");
-  //camNode.sendPayload(payload,sizeof(payload));
-  Serial.print(camNode.sendPayload(ift->szName,sizeof(ift->szName)),HEX);
-  
-  delete [] ift; 
-  delay(1500);
-}
-*/
 
 void loop(){
-  camNode.spin();
-}
+  xbee.send(zbTx);
 
-void zbCallback(ZBRxResponse& rx, uintptr_t){
+  // flash TX indicator
+  //flashLed(statusLed, 1, 100);
 
-  Serial.print("RX: ");
-  for(uint8_t i=0; i < rx.getDataLength(); i++)
-    Serial.print((char)rx.getData()[i]);
-  Serial.println("");
+  // after sending a tx request, we expect a status response
+  // wait up to half second for the status response
+  if (xbee.readPacket(500)) {
+    // got a response!
 
-  
-  
+    // should be a znet tx status              
+    if (xbee.getResponse().getApiId() == ZB_TX_STATUS_RESPONSE) {
+      xbee.getResponse().getZBTxStatusResponse(txStatus);
+
+      // get the delivery status, the fifth byte
+      if (txStatus.getDeliveryStatus() == SUCCESS) {
+        // success.  time to celebrate
+        //flashLed(statusLed, 5, 50);
+      } else {
+        // the remote XBee did not receive our packet. is it powered on?
+        //flashLed(errorLed, 3, 500);
+      }
+    }
+  } else if (xbee.getResponse().isError()) {
+    //nss.print("Error reading packet.  Error code: ");  
+    //nss.println(xbee.getResponse().getErrorCode());
+  } else {
+    // local XBee did not provide a timely TX Status Response -- should not happen
+    //flashLed(errorLed, 2, 50);
+  }
+
+  delay(1000);
+
+
 }
 
 
@@ -165,4 +164,5 @@ void processSerial(){
   }
   
 }
+
 */

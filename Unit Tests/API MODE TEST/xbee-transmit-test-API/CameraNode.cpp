@@ -74,7 +74,7 @@ void CameraNode::takeSnapshotSaveToSD(image_file_t* ift){
   while (jpglen > 0){
     
     // read IMG_BUF_SIZE bytes at a time;
-    uint8_t bytesToRead = min(BUF_SIZE, jpglen); //change 32 to 64 for a speedup but may not work with all setups!
+    uint8_t bytesToRead = min(IMG_BUF_SIZE, jpglen); //change 32 to 64 for a speedup but may not work with all setups!
  
     buffer = _cam->readPicture(bytesToRead);
 
@@ -104,7 +104,7 @@ void CameraNode::sendSnapshotFile(char* filename){
   
   File imgFile = SD.open(filename, FILE_READ);  // file object for image storage
   
-  uint8_t buffer[BUF_SIZE];                              // transmission buffer
+  uint8_t buffer[IMG_BUF_SIZE];                              // transmission buffer
   uint8_t bytesToRead;                          // bytes in transmission buffer
   uint16_t jpglen = imgFile.size();          // Get the size of the image (frame) taken
   uint8_t sendAttempts = 0;
@@ -130,7 +130,7 @@ void CameraNode::sendSnapshotFile(char* filename){
     
     // read IMG_BUF_SIZE bytes at a time;
         
-    bytesToRead = min(BUF_SIZE, jpglen);
+    bytesToRead = min(IMG_BUF_SIZE, jpglen);
 
     imgFile.read(buffer, bytesToRead);
 

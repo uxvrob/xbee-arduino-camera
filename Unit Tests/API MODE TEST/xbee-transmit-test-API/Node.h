@@ -26,8 +26,10 @@ class Node {
 
     Stream* _s;
 
-    //XBee* _xbee;
-    XBeeWithCallbacks* _xbee; 
+    XBee* _xbee;
+    XBeeResponse* _response;
+    ZBRxResponse* _rx;
+    ZBTxStatusResponse* _txStatus;
 
     static const uint8_t ku8XBSuccess                = 0x00;
     static const uint8_t ku8XBResponseTimedOut       = 0xE2;
@@ -37,17 +39,13 @@ class Node {
 	  Node();
 	  
 	  void begin();
-    void beginCallbacks();
    
     void setPrintSerial(Stream*);
     void setXbeeSerial(Stream&);
-    void setRxAddress(uint32_t, uint32_t);
-    uint8_t sendPayload(uint8_t[], uint8_t);
-    //uint8_t sendPayload(char*, uint8_t);
+    bool setRxAddress(uint32_t, uint32_t);
+    uint8_t sendPayload(uint8_t*, uint8_t);
+    uint8_t sendPayload(char*, uint8_t);
     void printXBAddress(void);
-    void setReceiveCb(void(*)());
-
-    void spin();
     
 
     void debugOn();
@@ -65,9 +63,10 @@ class Node {
 
   private:
 
-    uint32_t _msb;
-    uint32_t _lsb;
-    void (*_zbReceiveCb)(ZBRxResponse&, uintptr_t);
+    XBeeAddress64* _addr64;
+
+    
+    
 	
 	
 };
