@@ -12,7 +12,7 @@ bool cmdComplete = false;
 
 uint8_t payload[] = { 3, 2 };
 
-char cmdBuf[25];
+String cmdBuf = "";
 
 CameraNode camNode = CameraNode(CAM_RX_PIN, CAM_TX_PIN);
 
@@ -50,12 +50,79 @@ void loop(){
 
 void zbCallback(ZBRxResponse& rx, uintptr_t){
 
-  Serial.print("RX: ");
-  for(uint8_t i=0; i < rx.getDataLength(); i++)
-    Serial.print((char)rx.getData()[i]);
-  Serial.println("");
-
   
+  image_file_t* ift;
+  ift = new image_file_t[1];
+  Serial.print("CMD RX: ");
+  
+  for(uint8_t i=0; i < rx.getDataLength(); i++)
+    cmdBuf +=(char)rx.getData()[i];
+  
+  Serial.println(cmdBuf);
+
+  cmdBuf.trim();
+
+  if(cmdBuf.equals("AV+CGETS")){        // Send snapshot via Serial routine
+
+        //takeSnapshotTransmitSaveToSD(ift);
+
+
+  }else if(cmdBuf.equals("AV+SGETS")){        // Send snapshot via Serial routine
+    
+    camNode.takeSnapshotSaveToSD(ift);
+    camNode.sendSnapshotFile(ift->szName);
+
+  }else if(cmdBuf.equals("AV+SNAP")){
+    
+    camNode.takeSnapshotSaveToSD(ift);
+    
+  }else if(cmdBuf.equals("AV+RECF")){
+    if(camNode.getRecentImageFilename(ift->szName)){
+
+      File f = SD.open(ift->szName, FILE_READ);
+      Serial.print(F("Recent: "));
+      Serial.print(ift->szName);
+      Serial.print(F(" Size: "));
+      Serial.println(f.size());
+      f.rewindDirectory();
+      f.close();
+    }
+    else
+      Serial.println(F("No file created yet"));
+    
+  }else if(cmdBuf.equals("AV+FILES")){
+    
+    File root = SD.open("/");
+    root.rewindDirectory();
+    camNode.printDirectory(root, 0);
+    root.rewindDirectory();
+    root.close();
+  
+  }else if(cmdBuf.equals("AV+CSEND")){
+    
+    camNode.getRecentImageFilename(ift->szName);
+    camNode.sendSnapshotFile(ift->szName);
+  
+  }else if(cmdBuf.equals("AV+DEBUGON")){
+
+    camNode.debugOn();
+  
+  }else if(cmdBuf.equals("AV+JRES")){   // Command to reset the arduino.  NOT IMPLEMENTED YET.
+  
+    Serial.println(F("ROK"));
+  
+  }else if(cmdBuf.equals("OK")){        // ACK type command
+    
+      
+  }else{                                // Invalid CMD received
+    //Serial.print("NOK: ");
+    //Serial.println(cmdBuf);
+    //Serial.write('\n');
+  }
+
+  // Reset command buffers
+  cmdBuf = "";
+  delete [] ift;
   
 }
 

@@ -104,11 +104,11 @@ void CameraNode::sendSnapshotFile(char* filename){
   
   File imgFile = SD.open(filename, FILE_READ);  // file object for image storage
   
-  uint8_t buffer[BUF_SIZE];                              // transmission buffer
   uint8_t bytesToRead;                          // bytes in transmission buffer
   uint16_t jpglen = imgFile.size();          // Get the size of the image (frame) taken
   uint8_t sendAttempts = 0;
-
+  char cbuf[BUF_SIZE];
+  
   if(jpglen == 0){
     _nd->_s->println(F("AV+ERR,FILE_SIZE_NULL;"));
     imgFile.rewindDirectory();
@@ -116,11 +116,17 @@ void CameraNode::sendSnapshotFile(char* filename){
     return;
   }
 
-  //Send transmission packet with img file length
-  _nd->_s->print(F("AV+CTRANS,"));
-  _nd->_s->print(jpglen);
-  _nd->_s->write(";");
+  _nd->clearTransmitBuffer();
 
+  uint8_t bytes = sprintf(cbuf,"AV+CTRANS,%d;",jpglen);
+
+  for(uint8_t i =0; i<bytes; i++)
+    _nd->setTransmitBuffer(i,(uint8_t)cbuf[i]);
+
+  _nd->_u8TransmitBufferLength = bytes;
+
+  if(!_nd->sendPayload())
+    Serial.println("Did not get proper response");
   
 
   // Sending image via serial
@@ -132,9 +138,10 @@ void CameraNode::sendSnapshotFile(char* filename){
         
     bytesToRead = min(BUF_SIZE, jpglen);
 
-    imgFile.read(buffer, bytesToRead);
+    imgFile.read(_nd->_u8TransmitBuffer, bytesToRead);
+    _nd->_u8TransmitBufferLength = bytesToRead;
 
-    switch(_nd->sendPayload(buffer, bytesToRead)){
+    switch(_nd->sendPayload()){
       
       case ku8XBResponseTimedOut:
       case ku8XBDeliveryError:

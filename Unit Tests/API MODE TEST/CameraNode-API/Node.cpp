@@ -9,6 +9,13 @@
 #include "Node.h"
 
 
+uint16_t word(uint8_t high, uint8_t low) {
+  uint16_t ret_val = low;
+  ret_val += (high << 8);
+  return ret_val;
+}
+
+
 Node::Node():
 _s(&Serial),
 _xbee(new XBeeWithCallbacks())
@@ -66,11 +73,6 @@ void Node::printXBAddress(){
   _s->print(" LSB: ");
   _s->println(_lsb,HEX);
 }
-/*
-uint8_t Node::sendPayload(char* payload, uint8_t p_length){
-   return sendPayload(payload, p_length);
-}
-*/
 
 void Node::beginCallbacks(){
   
@@ -88,13 +90,12 @@ void Node::setReceiveCb(void (*zbReceiveCb)()){
   _zbReceiveCb = zbReceiveCb;
 }
 
-uint8_t Node::sendPayload(uint8_t payload[], uint8_t p_length){
+uint8_t Node::sendPayload(){
 
   uint8_t result = ku8XBSuccess;
 
-  _s->println("Sending payload...");
   XBeeAddress64 addr64 = XBeeAddress64(_msb, _lsb);
-  ZBTxRequest zbTx = ZBTxRequest(addr64, payload, p_length);
+  ZBTxRequest zbTx = ZBTxRequest(addr64, _u8TransmitBuffer, _u8TransmitBufferLength);
   ZBTxStatusResponse txStatus = ZBTxStatusResponse();
   
   _xbee->send(zbTx);
@@ -127,6 +128,70 @@ uint8_t Node::sendPayload(uint8_t payload[], uint8_t p_length){
   
   return result;  
   
+}
+
+/**
+Retrieve data from response buffer.
+
+@see Node::clearResponseBuffer()
+@param u8Index index of response buffer array (0x00..0x3F)
+@return value in position u8Index of response buffer (0x0000..0xFFFF)
+@ingroup buffer
+*/
+uint8_t Node::getResponseBuffer(uint8_t u8Index) {
+  if (u8Index < ku8MaxBufferSize) {
+    return _u8ResponseBuffer[u8Index];
+  } else {
+    return 0xFF;
+  }
+}
+
+/**
+Clear Node response buffer.
+
+@see Node::getResponseBuffer(uint8_t u8Index)
+@ingroup buffer
+*/
+void Node::clearResponseBuffer() {
+  uint8_t i;
+
+  for (i = 0; i < ku8MaxBufferSize; i++) {
+    _u8ResponseBuffer[i] = 0;
+  }
+}
+
+
+/**
+Place data in transmit buffer.
+
+@see Node::clearTransmitBuffer()
+@param u8Index index of transmit buffer array (0x00..0x3F)
+@param u8Value value to place in position u8Index of transmit buffer (0x00..0xFF)
+@return 0 on success; exception number on failure
+@ingroup buffer
+*/
+uint8_t Node::setTransmitBuffer(uint8_t u8Index, uint8_t u8Value) {
+  if (u8Index < ku8MaxBufferSize) {
+    _u8TransmitBuffer[u8Index] = u8Value;
+    return ku8XBSuccess;
+  } else {
+    return ku8XBIllegalDataAddress;
+  }
+}
+
+
+/**
+Clear Node transmit buffer.
+
+@see Node::setTransmitBuffer(uint8_t u8Index, uint16_t u16Value)
+@ingroup buffer
+*/
+void Node::clearTransmitBuffer() {
+  uint8_t i;
+
+  for (i = 0; i < ku8MaxBufferSize; i++) {
+    _u8TransmitBuffer[i] = 0;
+  }
 }
 
 void Node::printDirectory(File dir, int numTabs) {
