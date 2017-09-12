@@ -12,7 +12,6 @@
 #include <SD.h>
 #include <SoftwareSerial.h>      
 #include <Time.h>  
-#include <EasyTransfer.h>
 
 #define ND_CMD_BUF_SIZE 200     // Command Buffer maximum size
 #define IMG_BUF_SIZE 64         // Byte batch of image to send via Serial

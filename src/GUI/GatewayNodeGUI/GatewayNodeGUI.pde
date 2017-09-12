@@ -21,8 +21,8 @@ import processing.serial.*;
 // Gateway Node - COM4
 
 final String SER_PORT = "COM4";       //Serial.list()[2];
-final int SER_BAUD_RATE = 57600;      //This should match the Serial baud rate in the GatewayNode firmware
-final int BUF_SIZE = 32;              
+final int SER_BAUD_RATE = 115200;      //This should match the Serial baud rate in the GatewayNode firmware
+final int BUF_SIZE = 64;              
 
 // Window parameters
 
