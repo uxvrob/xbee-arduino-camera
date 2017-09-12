@@ -38,10 +38,11 @@ Arduino library for communicating with Modbus slaves over RS232/485 (via RTU pro
   
 #elif defined (ARDUINO) && ARDUINO >= 100
 	#include <Arduino.h>
+#ifdef CUSTOMSOFTWARESERIAL_H
 	#include "CustomSoftwareSerial.h"
-	
 	#define SERIAL_CONFIG CSERIAL_8E1
 	//CustomSoftwareSerial ModbusMaster::MBSerial = CustomSoftwareSerial(6,5,0);     ///< Pointer to Serial1 class object
+#endif
 #endif
 
 
@@ -96,11 +97,8 @@ Creates class object using default serial port 0, specified Modbus slave ID.
 @param u8MBSlave Modbus slave ID (1..255)
 @ingroup setup
 */
-#ifdef SPARK
+
 ModbusMaster::ModbusMaster(uint8_t u8MBSlave) 
-#else
-ModbusMaster::ModbusMaster(uint8_t u8MBSlave) : MBSerial(6,5,0)
-#endif
 {
   //ModbusMaster::MBSerial = &Serial1;
   //ModbusMaster::_u16SerialConfig = SERIAL_8E1;
@@ -118,8 +116,8 @@ Call once class has been instantiated, typically within setup().
 
 @ingroup setup
 */
-void ModbusMaster::begin(void) {
-	begin(9600);
+void ModbusMaster::begin(Stream* s) {
+	ModbusMaster::begin(s, 9600);
 }
 
 
@@ -133,17 +131,15 @@ Call once class has been instantiated, typically within setup().
 @param u16BaudRate baud rate, in standard increments (300..115200)
 @ingroup setup
 */
-void ModbusMaster::begin(uint16_t u16BaudRate){
+void ModbusMaster::begin(Stream* _s, uint16_t u16BaudRate){
 	_u8TransmitBufferIndex = 0;
 	u16TransmitBufferLength = 0;
 	
-	//Serial.printlnf("Baudrate: %d, Serialconfg: %d", u16BaudRate, _u16SerialConfig);
-	//Serial.printlnf("Baudrate: %d, Serialconfg: %d", 19200, SERIAL_8E1);
-
-	//ModbusMaster::MBSerial.begin(u16BaudRate, SERIAL_8E1);
-	//ModbusMaster::MBSerial.begin(19200, SERIAL_8E1);
-	MBSerial.begin(u16BaudRate, SERIAL_CONFIG);
-  //MBSerial.begin(u16BaudRate, CSERIAL_8E1);
+	_MBSerial = _s;
+	
+	//_MBSerial->begin(u16BaudRate);
+	
+	
 }
 
 
@@ -205,13 +201,6 @@ void ModbusMaster::beginTransmission(uint16_t u16Address) {
 	u16TransmitBufferLength = 0;
 }
 
-/*
-void ModbusMaster::printADUData(){
-	for (int i=0; i<5;i++){
-		
-	}
-}
-*/
 
 void ModbusMaster::sendBit(bool data) {
 	uint8_t txBitIndex = u16TransmitBufferLength % 16;
@@ -245,13 +234,6 @@ void ModbusMaster::send(uint8_t data) {
 }
 
 
-
-
-
-
-
-
-
 uint8_t ModbusMaster::available(void) {
 	return _u8ResponseBufferLength - _u8ResponseBufferIndex;
 }
@@ -279,7 +261,6 @@ serial ports, etc. is permitted within callback function.
 void ModbusMaster::idle(void (*idle)()) {
 	_idle = idle;
 }
-
 
 /**
 Retrieve data from response buffer.
@@ -344,6 +325,34 @@ void ModbusMaster::clearTransmitBuffer() {
 	for (i = 0; i < ku8MaxBufferSize; i++) {
 	  _u16TransmitBuffer[i] = 0;
 	}
+}
+
+/**
+Place file record requests into transmit buffer
+
+@see ModbusMaster::setTransmitBuffer(uint8_t u8Index, uint16_t u16Value)
+@param uint16_t u16FileNumber file id or number (0x0001..0xFFFF)
+@param uint16_t u16RecordNumber record number between 0 and 10000 (0x0000 to 0x270F) 
+@param uint16_t u16RecordLength length of the record requested N
+@return 0 on success; exception number on failure
+@ingroup buffer
+*/
+
+uint8_t ModbusMaster::setFileRecordBuffer(uint16_t u16FileNumber, uint16_t u16RecordNumber,
+  uint16_t u16RecordLength) {
+	 //TODO: Calculate byte count
+	 
+	uint8_t result = ku8MBSuccess;
+	
+	result = setTransmitBuffer(_u8TransmitBufferIndex++,6);
+	if(result != ku8MBSuccess) return result;
+	result = setTransmitBuffer(_u8TransmitBufferIndex++,u16FileNumber);
+	if(result != ku8MBSuccess) return result;
+	result = setTransmitBuffer(_u8TransmitBufferIndex++,u16RecordNumber);
+	if(result != ku8MBSuccess) return result;
+	result = setTransmitBuffer(_u8TransmitBufferIndex++,u16RecordLength);
+	return result;
+
 }
 
 
@@ -613,12 +622,36 @@ uint8_t ModbusMaster::readWriteMultipleRegisters(uint16_t u16ReadAddress,
 	_u16WriteQty = u16WriteQty;
 	return ModbusMasterTransaction(ku8MBReadWriteMultipleRegisters);
 }
-uint8_t ModbusMaster::readWriteMultipleRegisters(uint16_t u16ReadAddress,
-  uint16_t u16ReadQty) {
-	_u16ReadAddress = u16ReadAddress;
-	_u16ReadQty = u16ReadQty;
-	_u16WriteQty = _u8TransmitBufferIndex;
-	return ModbusMasterTransaction(ku8MBReadWriteMultipleRegisters);
+
+
+/**
+Modbus function 0x14 Read File Records
+
+This function code performs a combination of one read operation and one
+write operation in a single MODBUS transaction. The write operation is
+performed before the read. Holding registers are addressed starting at
+zero.
+
+@param u16ReferenceType address of the first holding register (0x0000..0xFFFF)
+@param u16FileNumber quantity of holding registers to read (1..125, enforced by remote device)
+@param u16RecordNumber address of the first holding register (0x0000..0xFFFF)
+@param u16WriteQty quantity of holding registers to write (1..121, enforced by remote device)
+@return 0 on success; exception number on failure
+@ingroup register
+*/
+
+
+/**
+Process File record sub request
+
+This function gets called during the dissassembly phase of the received file record response.
+It is called to process the data in the response buffer.
+
+*/
+
+uint8_t ModbusMaster::readFileRecord(void (*cbProcessFileRecordSubRequest)()){
+	_cbProcessFileRecordSubRequest = cbProcessFileRecordSubRequest;
+	return ModbusMasterTransaction(ku8MBReadFileRecord);
 }
 
 
@@ -639,7 +672,7 @@ Sequence:
 uint8_t ModbusMaster::ModbusMasterTransaction(uint8_t u8MBFunction) {
 	uint8_t u8ModbusADU[256];
 	uint8_t u8ModbusADUSize = 0;
-	uint8_t i, u8Qty;
+	uint8_t i, j, u8Qty;
 	uint16_t u16CRC;
 	uint32_t u32StartTime;
 	uint8_t u8BytesLeft = 8;
@@ -651,6 +684,7 @@ uint8_t ModbusMaster::ModbusMasterTransaction(uint8_t u8MBFunction) {
 	u8ModbusADU[u8ModbusADUSize++] = u8MBFunction;
 
 	switch(u8MBFunction) {
+
 		case ku8MBReadCoils:
 		case ku8MBReadDiscreteInputs:
 		case ku8MBReadInputRegisters:
@@ -660,7 +694,7 @@ uint8_t ModbusMaster::ModbusMasterTransaction(uint8_t u8MBFunction) {
 			u8ModbusADU[u8ModbusADUSize++] = lowByte(_u16ReadAddress);
 			u8ModbusADU[u8ModbusADUSize++] = highByte(_u16ReadQty);
 			u8ModbusADU[u8ModbusADUSize++] = lowByte(_u16ReadQty);
-			break;
+			break;		
 	}
 
 	switch(u8MBFunction) {
@@ -676,6 +710,13 @@ uint8_t ModbusMaster::ModbusMasterTransaction(uint8_t u8MBFunction) {
 	}
 
 	switch(u8MBFunction) {
+		case ku8MBReadFileRecord:			
+			u8ModbusADU[u8ModbusADUSize++] = lowByte(_u8TransmitBufferIndex);
+			for(i = 0; i < (_u8TransmitBufferIndex>>1); i++){
+				u8ModbusADU[u8ModbusADUSize++] = highByte(_u16TransmitBuffer[i]);
+				u8ModbusADU[u8ModbusADUSize++] = lowByte(_u16TransmitBuffer[i]);
+			}
+			break;
 		case ku8MBWriteSingleCoil:
 			u8ModbusADU[u8ModbusADUSize++] = highByte(_u16WriteQty);
 			u8ModbusADU[u8ModbusADUSize++] = lowByte(_u16WriteQty);
@@ -738,15 +779,15 @@ uint8_t ModbusMaster::ModbusMasterTransaction(uint8_t u8MBFunction) {
 	if(ModbusMaster::MBDebugSerialPrint == 1){
 		
 		Serial.print("Bytes not read: ");	
-		while(MBSerial.available()){
-				Serial.print(MBSerial.read(),HEX);
+		while(_MBSerial->available()){
+				Serial.print(_MBSerial->read(),HEX);
 				Serial.print(" ");
 		}
 		Serial.println("");
 	
 	}
 	else
-		while(MBSerial.read() != -1);
+		while(_MBSerial->read() != -1);
 
 	
 	// ---Transmit Command--- 
@@ -755,21 +796,20 @@ uint8_t ModbusMaster::ModbusMasterTransaction(uint8_t u8MBFunction) {
 	}
 	
 	if(ModbusMaster::MBDebugSerialPrint == 1) { // Print transmitted frame for Debugging purposes out on Serial
-	
 		Serial.print(F("TX: "));
 	}
 	
 
 	// Transmit loop - write to MBSerial
 	for (i = 0; i < u8ModbusADUSize; i++) {
-		MBSerial.write(u8ModbusADU[i]);
+		_MBSerial->write(u8ModbusADU[i]);
 		if(ModbusMaster::MBDebugSerialPrint == 1) { // Print trasnmitted frame for Debugging purposes out on Serial
 			Serial.print(u8ModbusADU[i], HEX);
 			Serial.print(" ");
 		}
 	}
 	u8ModbusADUSize = 0;
-	MBSerial.flush(); //Wait for transmission to get completed
+	_MBSerial->flush(); //Wait for transmission to get completed
 	
 	// ---Receive Response---
 	
@@ -782,13 +822,12 @@ uint8_t ModbusMaster::ModbusMasterTransaction(uint8_t u8MBFunction) {
 		digitalWrite(ModbusMaster::MBTxEnablePin, LOW);
 	}
 	
-	//delay(100);
 	// loop until we run out of time or bytes, or an error occurs
 	u32StartTime = millis();
 	
 	while (u8BytesLeft && !u8MBStatus) {
-		if (MBSerial.available()) {
-			u8ModbusADU[u8ModbusADUSize++] = MBSerial.read();
+		if (_MBSerial->available()) {
+			u8ModbusADU[u8ModbusADUSize++] = _MBSerial->read();
 			
 			
 			if (u8ModbusADU[0] == 0) { //Incase the received character is zero, discard it
@@ -833,6 +872,7 @@ uint8_t ModbusMaster::ModbusMasterTransaction(uint8_t u8MBFunction) {
 
 			// evaluate returned Modbus function code
 			switch(u8ModbusADU[1]) {
+				case ku8MBReadFileRecord:
 				case ku8MBReadCoils:
 				case ku8MBReadDiscreteInputs:
 				case ku8MBReadInputRegisters:
@@ -877,6 +917,33 @@ uint8_t ModbusMaster::ModbusMasterTransaction(uint8_t u8MBFunction) {
 	if (!u8MBStatus) {
 		// evaluate returned Modbus function code
 		switch(u8ModbusADU[1]) {
+			case ku8MBReadFileRecord:
+				i=3;
+				
+				
+				while(i <(u8ModbusADU[2] >> 1)){
+					// Iterate through each byte
+					u8BytesLeft = u8ModbusADU[i++];
+					_u8ResponseBufferLength = u8BytesLeft;
+					
+					// Discard reference type
+					u8ModbusADU[i++];
+					
+					// Process data
+					for(j=0; u8BytesLeft > 0; j++){
+						if(i < ku8MaxBufferSize){
+							_u16ResponseBuffer[j] = word(u8ModbusADU[2 * i + 3], u8ModbusADU[2 * i + 4]);
+						}
+						
+						i++;
+						u8BytesLeft--;
+					}
+					
+					// Process response buffer via callback
+					if(_cbProcessFileRecordSubRequest) _cbProcessFileRecordSubRequest();
+					
+				}
+				break;
 			case ku8MBReadCoils:
 			case ku8MBReadDiscreteInputs:
 				// load bytes into word; response bytes are ordered L, H, L, H, ...
@@ -907,6 +974,8 @@ uint8_t ModbusMaster::ModbusMasterTransaction(uint8_t u8MBFunction) {
 					_u8ResponseBufferLength = i;
 				}
 				break;
+				
+			
 		}
 	}
 

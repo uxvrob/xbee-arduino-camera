@@ -1,4 +1,4 @@
-/***************************************************************
+/*************************************************************** 
 * Gateway Node GUI 
 *
 * @author Robbie Sharma robbie -at- rsconsulting.ca
@@ -7,70 +7,6 @@
 * 
 ***************************************************************/
 
-import controlP5.*;
-import interfascia.*;
-import processing.serial.*;
-
-// Serial parameters
-/********************************************************************
- * Determine active serial port in Serial.list()[x] for port refernece
- * by uncommenting printArray block in setup() method
- *******************************************************************/
-
-// Camera Node - COM3
-// Gateway Node - COM4
-
-final String SER_PORT = "COM4";       //Serial.list()[2];
-final int SER_BAUD_RATE = 115200;      //This should match the Serial baud rate in the GatewayNode firmware
-final int BUF_SIZE = 64;              
-
-// Window parameters
-
-final int bgColor = 200;
-
-// Button Parameters
-
-final int btnWidth = 100;
-final int btnHeight = 30;
-
-// Image pixel size in GUI
-
-final int imgSizeWidth =  640;
-final int imgSizeHeight = 480;
-
-// Image streaming timeout
-
-final int TIMEOUT = 5000;  // in milliseconds (ms)
-
-// GUI Controls - Interfascia
-GUIController c;
-IFLookAndFeel defaultLook;
-IFButton getSnapshotBtn;
-IFButton getRecentSnapBtn;
-IFProgressBar progress;
-IFLabel progressLbl;
-
-// GUI Controls - ControlP5
-ControlP5 cp5;
-Textarea txtAConsole;
-
-// Command Parser/Buffer
-
-String cmdBuf = "";
-boolean cmdComplete = false;
-boolean imgRead;
-
-// Snapshot Image File Parameters
-
-PImage imgFile;
-OutputStream imgWriter;
-String recvImgFileName="";
-
-int totalFileSize = 0;
-int currentFileSize = 0;
-int timer = 0;
-
-Serial gwSerial;
 
 void setup() {
   
@@ -180,6 +116,10 @@ void setup() {
 
 void draw() {
   
+   /**********************************************************
+  ***************** SETUP GUI AND DRAW IMAGE *****************
+  **********************************************************/
+  
   background(200);
  
   int xpos_imgFile = int(width-imgSizeWidth*1.5+100);
@@ -189,9 +129,11 @@ void draw() {
   
   image(imgFile,xpos_imgFile,ypos_imgFile, imgSizeWidth, imgSizeHeight);
   
-  // Re-position controls
+   /**********************************************************
+  ******************** SETUP CONTROLS ************************
+  **********************************************************/
   
-  getSnapshotBtn.setPosition(xpos_imgFile, ypos_imgFile - getSnapshotBtn.getHeight()-10);
+  getSnapshotBtn.setPosition(xpos_imgFile, ypos_imgFile - getSnapshotBtn.getHeight()-10); 
   
   getRecentSnapBtn.setPosition(getSnapshotBtn.getX(),getSnapshotBtn.getY()-(btnHeight+10));
   
@@ -202,6 +144,10 @@ void draw() {
   txtAConsole.setPosition(txtAConsole.getPosition()[0],getSnapshotBtn.getY());
   txtAConsole.setSize(txtAConsole.getWidth(), getSnapshotBtn.getHeight() + imgSizeHeight+5);
   
+  
+   /**********************************************************
+  ******************** TITLE *********************************
+  **********************************************************/
   textSize(32);
   text("Smartifi Console", txtAConsole.getPosition()[0], txtAConsole.getPosition()[1]-20); 
   fill(0, 102, 153, 51);
@@ -212,14 +158,15 @@ void draw() {
   if(keyPressed && key=='l') {
     txtAConsole.setLineHeight(mouseY);
   }
-  
-  
-  
-  // File transfer progress status
-  
+ 
+ /**********************************************************
+  ******************** PROGRESS BAR ************************
+  **********************************************************/
+ 
   totalFileSize = (totalFileSize == 0)?1:totalFileSize;
-  
+   
   if(imgRead){
+
     if((millis()-timer)>=TIMEOUT){
       txtAConsole.setText(txtAConsole.getText()
                                    + "Gateway timeout on image transfer. Time: " + str(timer) + " ms\n"
@@ -287,7 +234,9 @@ void draw() {
   }
   
   
-  // COMMAND PROCESSING
+   /**********************************************************
+  ******************** SERIAL PROCESSING *********************
+  **********************************************************/
   
   if(cmdComplete){
     
@@ -323,12 +272,15 @@ void draw() {
        
        }else if(match(tkn[0],"CTRANS") != null) {                           // AV+CTRANS,<img_file_size_in_bytes>;  Start image transfer
          totalFileSize = int(tkn[1]);
+         println("MATCH: TOTALFILESIZE",totalFileSize);
          txtAConsole.setText(txtAConsole.getText() + 
-                             "Getting Image...\n");
+                             "Getting Image of size: " + totalFileSize + "...\n");
                              
+         
          // Switch to reading image byte stream in Serial Event handler and start timeout timer
          imgRead = true;
-         timer = millis();
+         
+         thread("processImgInput");
        
        }else if(match(tkn[0],"DEBUG") != null){
          
@@ -344,35 +296,15 @@ void draw() {
        println("Match: "+m[1]);
      }
     }
-     cmdComplete = false;
-     cmdBuf="";
-     
+    
+    cmdComplete = false;
+    cmdBuf="";
   }
+  
+  
+  if(!imgRead) processSerial(gwSerial);
+  
  
-}
-
-void sendGatewayCmd(String cmd){
-  
-  gwSerial.write(cmd);
-  gwSerial.write(10); 
-
-}
-
-void createImageFile(){
-  
-  recvImgFileName = "IMAGE_";
-  recvImgFileName += String.valueOf(year());
-  recvImgFileName += String.valueOf(month());
-  recvImgFileName += String.valueOf(day());
-  recvImgFileName += "-";
-  recvImgFileName += String.valueOf(hour());
-  recvImgFileName += String.valueOf(minute());
-  recvImgFileName += ".jpg";
-  
-  imgWriter = createOutput(sketchPath()+"/"+recvImgFileName);
-  currentFileSize =0;
-  totalFileSize=0;
-  
 }
 
 void actionPerformed (GUIEvent e) {
@@ -383,7 +315,7 @@ void actionPerformed (GUIEvent e) {
                           + "Waiting for image data...\n"
                           + "Grab a coffee... this will take awhile..\n");
       
-      createImageFile();
+      
       //sendGatewayCmd("AV+CGETS");
       sendGatewayCmd("AV+SGETS");
       
@@ -393,59 +325,19 @@ void actionPerformed (GUIEvent e) {
   } 
   
   if(e.getSource() == getRecentSnapBtn){
+
     
     txtAConsole.setText(txtAConsole.getText() 
                           + "Getting most recent image stored...\n");
-    createImageFile();                      
+    
     sendGatewayCmd("AV+CSEND");
      
   }
 }
 
-void serialEvent(Serial s){
-
-    if(cmdComplete) return;
+void processSerial (Serial s){
     
-    // If CTRANS command received, read byte stream until stream is completed.
-    
-    if(imgRead){
-      
-        // There is a delay because image is being saved to the SD card first then transmitted.
-        
-        if((totalFileSize-currentFileSize) > 0 ){
-            
-
-            
-            // Read stream data and output to jpg file
-            try{
-              
-              int bytesToRead = min(BUF_SIZE, (totalFileSize-currentFileSize));
-              byte[] buffer = new byte[bytesToRead];
-              
-              buffer = s.readBytes(bytesToRead);
-              imgWriter.write(buffer);
-              if(buffer.length > 0){                
-                timer = millis();
-              }
-              currentFileSize+=buffer.length;
-              buffer = null;
-
-            }
-            catch(IOException e){
-              e.printStackTrace();
-              txtAConsole.setText(txtAConsole.getText()
-                + "Exception on serial read\n");
-            }
-            
-            // Output a response every 128 bytes
-            if(((currentFileSize % 128) == 0) && currentFileSize > 20000){
-                      println("Current Filesize: "+str(currentFileSize)+" Buffer size: "+str(min(64, (totalFileSize-currentFileSize))) + "\n");
-              
-            }
-        }
-    
-   }
-   else{
+    if(!imgRead){
       char inChar = s.readChar();
       cmdBuf += str(inChar);
       
@@ -456,8 +348,6 @@ void serialEvent(Serial s){
       if(cmdBuf.length() > 100){
         cmdBuf="";
       }
-        
-     
-   }
+    }
     
 }
