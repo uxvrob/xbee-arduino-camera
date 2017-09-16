@@ -1,13 +1,13 @@
 #include <XBee.h>
 #include <Printers.h>
 #include <SoftwareSerial.h>      
-#include <Time.h>
 
 XBeeWithCallbacks xbee;
-XBeeResponse response = XBeeResponse();
+
+
+//XBeeResponse response = XBeeResponse();
 // create reusable response objects for responses we expect to handle 
-ZBRxResponse rx = ZBRxResponse();
-ModemStatusResponse msr = ModemStatusResponse();
+//ZBRxResponse rx = ZBRxResponse();
 
 char cmdBuf[25];
 uint8_t cmdidx = 0;
@@ -20,13 +20,20 @@ uint32_t _lsb = 0x415B894A;
 SoftwareSerial xss = SoftwareSerial(A0,A1);
 
 void zbCallback(ZBRxResponse& rx, uintptr_t){
-
-    Serial.print("CB: ");
+	/*
+	ZBTxRequest tx;
+	
+	tx.setAddress64(rx.getRemoteAddress64());
+	tx.setPayload(rx.getFrameData() + rx.getDataOffset(), rx.getDataLength());
+	
+	xbee.send(tx);
+	*/
     for(uint8_t i=0; i < rx.getDataLength(); i++){
-      Serial.print((char)rx.getData()[i]);
+      Serial.write((char)rx.getData()[i]);
     }
-    Serial.println("");
-
+	
+	Serial.flush();
+	
 }
 
 void setup() {

@@ -123,42 +123,43 @@ void CameraNode::sendSnapshotFile(char* filename){
   _ift.uPackets = _nd->convertFileSizeToPackets(_ift.uSize);
   _ift.uPacketIndex = 0;
   
-  if(_ift.uSize == 0){
-    Serial.println(F("AV+ERR,FILE_SIZE_NULL;"));
-    imgFile.rewindDirectory();
+  if(!imgFile){
+    Serial.println(F("AV+ERR,FILE_OPEN;"));
     imgFile.close();
     return;
   }
   
+  Serial.print(F("File size: "));
+  Serial.println(_ift.uSize);
   
- 
-  char cbuf[MAX_BUF_SIZE];
+  uint8_t cbuf[MAX_BUF_SIZE];
 
-  uint8_t bytesToSend = sprintf(cbuf,"AV+CTRANS,%d,%d;",_ift.uSize,_ift.uPackets);
+  uint16_t bytesToSend = sprintf(cbuf,"AV+CTRANS,%u,%u;",_ift.uSize,_ift.uPackets);
+
   
-  _nd->sendPayload(cbuf,bytesToSend);
-
   if(_nd->sendPayloadAndWait(cbuf,bytesToSend) == 0){
-	  
+	 
 	// Sending image via serial
 	uint16_t responseTime = millis();
 	bool sendAgain = false;
 	
   
-	while ((_ift.uPacketIndex < _ift.uPackets) && (millis() - responseTime)<10000){
-    
-		// read IMG_MAX_BUF_SIZE bytes at a time;
-		
+	while ((_ift.uPacketIndex < _ift.uPackets) && (millis() - responseTime)<1000){
+
 		
 		if(!sendAgain){
 			bytesToSend = (_ift.uPacketIndex == _ift.uPackets-1)?(_ift.uSize - (_ift.uPacketIndex*MAX_BUF_SIZE)):MAX_BUF_SIZE;
 			
-			imgFile.read(_nd->_u8TransmitBuffer, bytesToSend);
+			imgFile.read(cbuf, bytesToSend);
+			
+			Serial.print(F("Packet: "));
+			Serial.println(_ift.uPacketIndex);
 		}
 
-		if(_nd->sendPayloadAndWait(_nd->_u8TransmitBuffer,bytesToSend) == 0){
+		if(_nd->sendPayloadAndWait(cbuf,bytesToSend) == 0){
 			sendAgain = false;
 			responseTime = millis();
+			
 			_ift.uPacketIndex++;
 		  
 		}
@@ -169,6 +170,7 @@ void CameraNode::sendSnapshotFile(char* filename){
 		}
 
 	}
+	
 	  
   }
   else{
@@ -180,7 +182,6 @@ void CameraNode::sendSnapshotFile(char* filename){
   if((_ift.uPacketIndex < _ift.uPackets)) 
 	  Serial.println(F("AV+ERR,TIMEOUT"));
   
-  imgFile.rewindDirectory();
   imgFile.close();
   
 

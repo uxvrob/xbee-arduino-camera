@@ -53,7 +53,7 @@ void Node::beginCallbacks(){
   
   //_xbee->onPacketError(printErrorCb, (uintptr_t)(Print*)&_s);
   //_xbee->onTxStatusResponse(printErrorCb, (uintptr_t)(Print*)&_s);
-  //_xbee->onZBTxStatusResponse(printErrorCb, (uintptr_t)(Print*)&_s);
+  _xbee->onZBTxStatusResponse(printErrorCb, (uintptr_t)(Print*)&Serial);
 
   _xbee->onZBRxResponse(this->_zbReceiveCb);
   //_xbee->onRx16Response(receive16);
