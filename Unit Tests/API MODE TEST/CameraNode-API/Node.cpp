@@ -17,23 +17,17 @@ uint16_t word(uint8_t high, uint8_t low) {
 
 
 Node::Node():
-_s(&Serial),
 _xbee(new XBeeWithCallbacks())
 {
 	
 }
-
-void Node::setPrintSerial(Stream* s){
-  _s = s;
-}
-
 
 
 void Node::begin(){
 
   // see if the card is present and can be initialized:
   if(SD_CHIP_SELECT_PIN != 10) pinMode(10, OUTPUT);
-  if (!SD.begin(SD_CHIP_SELECT_PIN)) _s->println(F("AV+ERR,0x01;"));
+  if (!SD.begin(SD_CHIP_SELECT_PIN)) Serial.println(F("AV+ERR,0x01;"));
 
   this->beginCallbacks();
   
@@ -41,14 +35,6 @@ void Node::begin(){
 
 void Node::spin(){
   _xbee->loop();
-}
-
-void Node::debugOn(){
-  _debugOn = true;
-}
-
-void Node::debugOff(){
-  _debugOn = false;
 }
 
 void Node::setXbeeSerial(Stream& ser){
@@ -62,19 +48,12 @@ void Node::setRxAddress(uint32_t msb, uint32_t lsb){
 	_addr64.setLsb(lsb);
 	zbTx.setAddress64(_addr64);
 }
-void Node::printXBAddress(){
-
-  _s->print("MSB: ");
-  _s->print(_addr64.getMsb(),HEX);
-  _s->print(" LSB: ");
-  _s->println(_addr64.getLsb(),HEX);
-}
 
 void Node::beginCallbacks(){
   
-  _xbee->onPacketError(printErrorCb, (uintptr_t)(Print*)&_s);
-  _xbee->onTxStatusResponse(printErrorCb, (uintptr_t)(Print*)&_s);
-  _xbee->onZBTxStatusResponse(printErrorCb, (uintptr_t)(Print*)&_s);
+  //_xbee->onPacketError(printErrorCb, (uintptr_t)(Print*)&_s);
+  //_xbee->onTxStatusResponse(printErrorCb, (uintptr_t)(Print*)&_s);
+  //_xbee->onZBTxStatusResponse(printErrorCb, (uintptr_t)(Print*)&_s);
 
   _xbee->onZBRxResponse(this->_zbReceiveCb);
   //_xbee->onRx16Response(receive16);
@@ -140,6 +119,7 @@ void Node::clearTransmitBuffer() {
   }
 }
 
+/*
 void Node::printDirectory(File dir, int numTabs) {
   while (true) {
 
@@ -149,36 +129,30 @@ void Node::printDirectory(File dir, int numTabs) {
       break;
     }
     for (uint8_t i = 0; i < numTabs; i++) {
-      _s->print('\t');
-	  //sendPayload("\t");
+      Serial.print(F("\t"));
 
     }
-    _s->print(entry.name());
+    Serial.print(entry.name());
 	
-	//sendPayload(entry.name());
+
 
     if (entry.isDirectory()) {
-      _s->println("/");
+      Serial.println(F("/"));
 	  
-		//sendPayload("/\n");
+
 	  
       printDirectory(entry, numTabs + 1);
     } else {
       // files have sizes, directories do not
-      _s->print("\t\t");
-      _s->println(entry.size(), DEC);
-	  
-		//sendPayload("\t\t");
+      Serial.print(F("\t\t"));
+      Serial.println(entry.size(), DEC);
 
-	
-		//sendPayload(String((int)entry.size()));
-		//sendPayload("/\n");
 	
     }
     entry.close();
   }
 }
-
+*/
 
 bool Node::generateImageFilename(char* szFileName){
   strcpy(szFileName, "IMAGE00.JPG");
@@ -219,9 +193,6 @@ bool Node::getRecentImageFilename(char* szFileName){
   szFileName[5] = '0' + maxVal/10;
   szFileName[6] = '0' + maxVal%10;
   
-  _s->print("Filename: ");
-  _s->println(szFileName);
-  
   delay(100);
   
   return true;
@@ -244,9 +215,10 @@ uint16_t Node::convertPacketToFilePosition(uint16_t packetIndex, uint16_t fileSi
 	
 }
 
-int Node::freeRam () {
+void Node::freeRam () {
   extern int __heap_start, *__brkval; 
   int v; 
-  return (int) &v - (__brkval == 0 ? (int) &__heap_start : (int) __brkval); 
+  Serial.print(F("Free Ram: "));
+  Serial.println( (int) &v - (__brkval == 0 ? (int) &__heap_start : (int) __brkval)); 
 }
 

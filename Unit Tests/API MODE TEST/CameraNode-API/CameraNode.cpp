@@ -20,17 +20,14 @@ CameraNode::CameraNode(int cam_rx_pin, int cam_tx_pin):
 
 void CameraNode::begin(){
 	
-	  _nd->_s->print("FREE RAM: ");
-  _nd->_s->println(_nd->freeRam());
-	
-    _nd->begin();
+   _nd->begin();
   
     // Try to locate the camera
   if (_cam->begin()) {
-    _nd->_s->println(F("AV+CS,0x01;"));
+    Serial.println(F("AV+CS,0x01;"));
 	_nd->sendPayload("AV+CS,0x01;");
   } else {
-    _nd->_s->println(F("AV+CS,0x00;"));
+    Serial.println(F("AV+CS,0x00;"));
 	_nd->sendPayload("AV+CS,0x00;");
     return;
   }
@@ -40,13 +37,6 @@ void CameraNode::begin(){
   
   _cam->setImageSize(VC0706_640x480);        // biggest
   //_cam->setImageSize(VC0706_160x120);          // small
-  
-  //_cam->takePicture();
-  
-  //_cam->resumeVideo();
-  
-  _nd->_s->print(F("FREE RAM: "));
-  _nd->_s->println(_nd->freeRam());
 
 }
 
@@ -54,74 +44,67 @@ void CameraNode::takeSnapshotSaveToSD(){
 
   // Get snapshot
   if (!_cam->takePicture()) {
-    _nd->_s->println(F("AV+ERR,TAKE_PIC;"));
+    Serial.println(F("AV+ERR,TAKE_PIC;"));
     return;
   }
 
   // Create an image with incremental name IMAGExx.JPG
   
-  /*
+  
   if(!generateImageFilename(_ift.szName)){
-    _nd->_s->println(F("AV+ERR,GEN_FILENAME;"));
+    Serial.println(F("AV+ERR,GEN_FILENAME;"));
     return;
   }
-  */
   
-  
-  strcpy(_ift.szName, "IMAGE09.JPG");
+   
+    
   _ift.uSize = _cam->frameLength(); // Get the size of the image (frame) taken
   _ift.uPackets = _nd->convertFileSizeToPackets(_ift.uSize);
   _ift.uPacketIndex=0;
 
   
-  if(!_debugOn){ 
-	_nd->_s->print(F("AV+DEBUG,TAKESNAP_SD,"));
-	_nd->_s->print(_ift.szName);
-	_nd->_s->print(F(","));
-	_nd->_s->print(_ift.uSize);
-	_nd->_s->print(F(","));
-	_nd->_s->print(_ift.uPackets);
-	_nd->_s->print(F(","));
-	_nd->_s->print(_ift.uPacketIndex);
-	_nd->_s->println(F(";"));
-  }
+  #ifdef DEBUG 
+	Serial.print(F("AV+DEBUG,TAKESNAP_SD,"));
+	Serial.print(_ift.szName);
+	Serial.print(F(","));
+	Serial.print(_ift.uSize);
+	Serial.print(F(","));
+	Serial.print(_ift.uPackets);
+	Serial.print(F(","));
+	Serial.print(_ift.uPacketIndex);
+	Serial.println(F(";"));
+  #endif
   
+
+  //if(SD.exists(_ift.szName)) SD.remove(_ift.szName);
   
   File imgFile = SD.open(_ift.szName, FILE_WRITE);  // file object for image storage
 
-  // Sending image via serial
   
+  //if(imgFile.seek(0)) Serial.println(F("Seek successful"));
+  //if(imgFile.write("TEST") != 0) Serial.println(F("write success"));
   
-  while (_ift.uPacketIndex < _ift.uPackets){
+  _nd->freeRam();
+  
+  if(!imgFile) Serial.println(F("AV+ERR,FILE_OPEN;"));
+  
+  while (_ift.uPacketIndex < _ift.uPackets && imgFile){
 	
     // read IMG_MAX_BUF_SIZE bytes at a time;
 	
     uint16_t bytesToRead = (_ift.uPacketIndex == _ift.uPackets-1)?(_ift.uSize - (_ift.uPacketIndex*MAX_BUF_SIZE)):MAX_BUF_SIZE;
  
 	uint8_t* buf = _cam->readPicture(bytesToRead);
-	
-    imgFile.write(buf, bytesToRead);
-	//_nd->_s->write(buf);
-	//_nd->_s->print(F("FREE RAM: "));
-	//_nd->_s->println(_nd->freeRam());
-  
+	imgFile.write(buf, bytesToRead);
 	_ift.uPacketIndex++;
 
   }
   
-  _nd->_s->print(F("SUCCESS: "));
-  _nd->_s->println(_ift.uSize);
-  _nd->_s->print(F("FREE RAM: "));
-  _nd->_s->println(_nd->freeRam());
   
   imgFile.flush();
-  imgFile.close();
+  imgFile.close();  
 
-  
-
-  if(!_cam->resumeVideo()){
-    _nd->_s->println(F("AV+ERR,RESUME_VIDEO;"));
-  }
+  _cam->resumeVideo();
 
 }
 
@@ -129,7 +112,7 @@ void CameraNode::takeSnapshotSaveToSD(){
 void CameraNode::sendSnapshotFile(char* filename){
 
   if(!SD.exists(filename)){
-    _nd->_s->println(F("AV+ERR,FILE_NO_EXIST;"));
+    Serial.println(F("AV+ERR,FILE_NO_EXIST;"));
     return;
   }
   
@@ -141,7 +124,7 @@ void CameraNode::sendSnapshotFile(char* filename){
   _ift.uPacketIndex = 0;
   
   if(_ift.uSize == 0){
-    _nd->_s->println(F("AV+ERR,FILE_SIZE_NULL;"));
+    Serial.println(F("AV+ERR,FILE_SIZE_NULL;"));
     imgFile.rewindDirectory();
     imgFile.close();
     return;
@@ -181,21 +164,21 @@ void CameraNode::sendSnapshotFile(char* filename){
 		}
 		else{
 			sendAgain = true;
-			_nd->_s->print(F("AV+ERR,XBEE,sendSnapshotFile"));
-			//_nd->_s->println(_nd->_xbee.getResponse().getErrorCode());
+			Serial.print(F("AV+ERR,XBEE,sendSnapshotFile"));
+			//Serial.println(_nd->_xbee.getResponse().getErrorCode());
 		}
 
 	}
 	  
   }
   else{
-	  _nd->_s->print(F("AV+ERR,XBEE,sendSnapshotFile"));
-	  //_nd->_s->println(_nd->_xbee.getResponse().getErrorCode());
+	  Serial.print(F("AV+ERR,XBEE,sendSnapshotFile"));
+	  //Serial.println(_nd->_xbee.getResponse().getErrorCode());
   }
   
 
-  if((_ift.uPacketIndex < _ift.uPackets) && _debugOn) 
-	  _nd->_s->println(F("AV+ERR,TIMEOUT"));
+  if((_ift.uPacketIndex < _ift.uPackets)) 
+	  Serial.println(F("AV+ERR,TIMEOUT"));
   
   imgFile.rewindDirectory();
   imgFile.close();

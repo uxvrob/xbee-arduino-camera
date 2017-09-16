@@ -14,7 +14,6 @@
 #include <SD.h>
 #include <SPI.h>
 #include <SoftwareSerial.h>      
-#include <Time.h>
 
 #define SD_CHIP_SELECT_PIN 4        // SD card chip select
 #define SER_XBEE_BAUD_RATE 57600 
@@ -30,15 +29,12 @@ class Node {
 	
 	public:
 
-    Stream* _s;
-
-    //XBee* _xbee;
     XBeeWithCallbacks* _xbee; 
 	
-	XBeeResponse response;
-	ZBRxResponse zbRx;
+	//XBeeResponse response;
+	//ZBRxResponse zbRx;
 	ZBTxRequest  zbTx;
-	ZBTxStatusResponse zbTxStatus;
+	//ZBTxStatusResponse zbTxStatus;
 	
 	uint8_t _u8TransmitBuffer[MAX_BUF_SIZE];
     uint8_t _u8TransmitBufferLength;
@@ -84,31 +80,22 @@ class Node {
 		return _xbee->sendAndWait(zbTx, XBEE_TIMEOUT);
 	}
 	
-    void printXBAddress(void);
     void setReceiveCb(void(*)());
 
     uint8_t setTransmitBuffer(uint8_t, uint8_t);
     void clearTransmitBuffer();
 
     void spin();
-    
-    void debugOn();
-    void debugOff();
 
-    void printDirectory(File, int);
+    //void printDirectory(File, int);
     bool getRecentImageFilename(char*);
     bool generateImageFilename(char*); 
 	
-	int freeRam();
+	void freeRam();
 	
 	uint16_t convertFileSizeToPackets(uint16_t);
 	uint16_t convertPacketToFilePosition(uint16_t, uint16_t);
 
-
-    
-	protected:
-  
-    bool _debugOn;
 
 	private:
 

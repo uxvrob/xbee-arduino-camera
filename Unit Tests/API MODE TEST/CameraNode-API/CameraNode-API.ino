@@ -7,6 +7,8 @@
 #define GATEWAY_SH_ADDR 0x0013A200
 #define GATEWAY_SL_ADDR 0x415B8949
 
+//#define DEBUG 1
+
 
 bool cmdComplete = false;
 
@@ -15,7 +17,7 @@ String cmdBuf = "";
 CameraNode camNode = CameraNode(CAM_RX_PIN, CAM_TX_PIN);
 
 void _zbRxCb(ZBRxResponse& rx, uintptr_t){
-  
+  camNode.freeRam();
   String cmdBuf = "";
   
   for(uint8_t i=0; i < rx.getDataLength(); i++)
@@ -23,11 +25,7 @@ void _zbRxCb(ZBRxResponse& rx, uintptr_t){
 
   cmdBuf.trim();
 
-  if(cmdBuf.equals("AV+CGETS")){        // Send snapshot via Serial routine
-
-        //takeSnapshotTransmitSaveToSD(ift);
-		
-  }else if(cmdBuf.equals("AV+SGETS")){        // Send snapshot via Serial routine
+  if(cmdBuf.equals("AV+SGETS")){        // Send snapshot via Serial routine
     
     camNode.takeSnapshotSaveToSD();
     camNode.sendSnapshotFile(camNode._ift.szName);
@@ -40,7 +38,9 @@ void _zbRxCb(ZBRxResponse& rx, uintptr_t){
 	
     if(camNode.getRecentImageFilename(camNode._ift.szName)){
 
+	  
       File f = SD.open(camNode._ift.szName, FILE_READ);
+
       Serial.print(F("Recent: "));
       Serial.print(camNode._ift.szName);
 	  camNode.sendPayload(camNode._ift.szName);
@@ -48,10 +48,11 @@ void _zbRxCb(ZBRxResponse& rx, uintptr_t){
       Serial.println(f.size());
       f.rewindDirectory();
       f.close();
+
     }
     else
       Serial.println(F("No file created yet"));
-    
+   /*
   }else if(cmdBuf.equals("AV+FILES")){
     
     File root = SD.open("/");
@@ -59,20 +60,12 @@ void _zbRxCb(ZBRxResponse& rx, uintptr_t){
     camNode.printDirectory(root, 0);
     root.rewindDirectory();
     root.close();
-  
+  */
   }else if(cmdBuf.equals("AV+CSEND")){
     
     camNode.getRecentImageFilename(camNode._ift.szName);
     camNode.sendSnapshotFile(camNode._ift.szName);
-  
-  }else if(cmdBuf.equals("AV+DEBUGON")){
-
-    camNode.debugOn();
 	
-  }else if(cmdBuf.equals("AV+DEBUGOFF")){
-
-    camNode.debugOff();
-  
   }else if(cmdBuf.equals("AV+JRES")){   
   // Command to reset the arduino.  NOT IMPLEMENTED YET.
   
@@ -97,7 +90,7 @@ void _zbRxCb(ZBRxResponse& rx, uintptr_t){
 
   // Reset command buffers
   cmdBuf = "";
-  
+  camNode.freeRam();
 }
 
 void setup() {
@@ -107,7 +100,7 @@ void setup() {
   camNode.setRxAddress(GATEWAY_SH_ADDR,GATEWAY_SL_ADDR);
   camNode.setReceiveCb(_zbRxCb);
   camNode.begin();
-
+  camNode.freeRam();
 }
 
 void loop(){
