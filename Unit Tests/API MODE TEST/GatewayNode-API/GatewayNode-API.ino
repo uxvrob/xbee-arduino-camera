@@ -3,7 +3,7 @@
 #include <SoftwareSerial.h>      
 #include <Time.h>
 
-XBee xbee = XBee();
+XBeeWithCallbacks xbee;
 XBeeResponse response = XBeeResponse();
 // create reusable response objects for responses we expect to handle 
 ZBRxResponse rx = ZBRxResponse();
@@ -19,11 +19,27 @@ uint32_t _lsb = 0x415B894A;
 
 SoftwareSerial xss = SoftwareSerial(A0,A1);
 
+void zbCallback(ZBRxResponse& rx, uintptr_t){
+
+    Serial.print("CB: ");
+    for(uint8_t i=0; i < rx.getDataLength(); i++){
+      Serial.print((char)rx.getData()[i]);
+    }
+    Serial.println("");
+
+}
+
 void setup() {
   Serial.begin(57600);
   while(!Serial){
     
   }
+
+  //xbee.onPacketError(printErrorCb, (uintptr_t)(Print*)&Serial);
+  //xbee.onTxStatusResponse(printErrorCb, (uintptr_t)(Print*)&Serial);
+  //xbee.onZBTxStatusResponse(printErrorCb, (uintptr_t)(Print*)&Serial);
+  xbee.onZBRxResponse(zbCallback);
+  
   xbee.setSerial(xss);
   xss.begin(57600);
 
@@ -33,18 +49,16 @@ void setup() {
 void loop() {
   // put your main code here, to run repeatedly:
 
-   if(cmdComplete){
+    xbee.loop();
 
-     
+   if(cmdComplete){
       
       XBeeAddress64 addr64 = XBeeAddress64(_msb, _lsb);
       ZBTxRequest zbTx = ZBTxRequest(addr64, cmdBuf, cmdidx);
       ZBTxStatusResponse txStatus = ZBTxStatusResponse();
 
-      xbee.send(zbTx);
-
-      xbeeReadPacket();
-
+      xbee.sendAndWait(zbTx,500);
+	  
        // Reset command buffers
       cmdidx = 0;
       cmdComplete = false;
@@ -53,43 +67,8 @@ void loop() {
   processSerial();
 }
 
-void xbeeReadPacket(){
 
-    xbee.readPacket();
-    
-    if (xbee.getResponse().isAvailable()) {
-      // got something
-           
-      if (xbee.getResponse().getApiId() == ZB_RX_RESPONSE) {
-        // got a zb rx packet
-        
-        // now fill our zb rx class
-        xbee.getResponse().getZBRxResponse(rx);
-        //Serial.print("payload [");
-         for (int i = 0; i < rx.getDataLength()-3; i++) {
-          /*
-          Serial.print(i, DEC);
-          Serial.print("] is ");
-          */
-          Serial.print((char)rx.getData()[i]);
-        }
-        //Serial.println("]");
-        /*
-       Serial.print("FrameData [");
-       for (int i = 0; i < xbee.getResponse().getFrameDataLength(); i++) {
-        //Serial.print("frame data [");
-        //Serial.print(i, DEC);
-        //Serial.print("] is ");
-        Serial.print((char)xbee.getResponse().getFrameData()[i]);
-       }
-       Serial.println("]");
-      */
-      }
-    } else if (xbee.getResponse().isError()) {
-      Serial.print("error code:");
-      Serial.println(xbee.getResponse().getErrorCode());
-    }
-}
+
 
 void processSerial(){
 

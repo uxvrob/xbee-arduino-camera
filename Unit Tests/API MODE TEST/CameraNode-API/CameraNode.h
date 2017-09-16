@@ -7,32 +7,38 @@
 
 #define CAM_RX_PIN 2
 #define CAM_TX_PIN 3
-#define BUF_SIZE 64         // Byte batch of image to send via Serial
+
 
 typedef struct {
   char szName[15];
   uint16_t uSize;
+  uint16_t uPackets;
+  uint16_t uPacketIndex;
 } image_file_t;
 
 
 class CameraNode : public Node{
 	
 	public:
-
+	
+	image_file_t _ift;
+	
     CameraNode(int,int);
 
-
     void begin();
-    void takeSnapshotSaveToSD(image_file_t*);
+    void takeSnapshotSaveToSD();
     void sendSnapshotFile(char*);
-
+	
+	protected:
+	
+	static void _zbRxCb(ZBRxResponse&, uintptr_t);
 
 	private:
+	
     Node* _nd;
-	  SoftwareSerial* _camConn;
+	SoftwareSerial* _camConn;
     Adafruit_VC0706* _cam;
-    bool _debugOn;
-
+	
 };
 
 

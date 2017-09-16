@@ -40,7 +40,6 @@ void Node::begin(){
 }
 
 void Node::spin(){
-
   _xbee->loop();
 }
 
@@ -55,23 +54,19 @@ void Node::debugOff(){
 void Node::setXbeeSerial(Stream& ser){
 
   _xbee->setSerial(ser);
-  /*
-  if(!ser)
-    ser.begin(SER_XBEE_BAUD_RATE);
-  */
+
 }
 
 void Node::setRxAddress(uint32_t msb, uint32_t lsb){
-  _msb = msb;
-  _lsb = lsb;
-  
+	_addr64.setMsb(msb);
+	_addr64.setLsb(lsb);
 }
 void Node::printXBAddress(){
 
   _s->print("MSB: ");
-  _s->print(_msb,HEX);
+  _s->print(_addr64.getMsb(),HEX);
   _s->print(" LSB: ");
-  _s->println(_lsb,HEX);
+  _s->println(_addr64.getLsb(),HEX);
 }
 
 void Node::beginCallbacks(){
@@ -90,74 +85,56 @@ void Node::setReceiveCb(void (*zbReceiveCb)()){
   _zbReceiveCb = zbReceiveCb;
 }
 
-uint8_t Node::sendPayload(){
 
-  uint8_t result = ku8XBSuccess;
 
-  XBeeAddress64 addr64 = XBeeAddress64(_msb, _lsb);
-  ZBTxRequest zbTx = ZBTxRequest(addr64, _u8TransmitBuffer, _u8TransmitBufferLength);
-  ZBTxStatusResponse txStatus = ZBTxStatusResponse();
+
+void Node::setPayload(String str){
+	clearTransmitBuffer();
+	for(uint8_t i =0; i<str.length(); i++)
+		setTransmitBuffer(i,(uint8_t)str[i]);
+
+	_u8TransmitBufferLength = str.length();
+
+	
+}
+
+/*
+void Node::setPayload(uint8_t* cbuf, uint8_t length){
+	clearTransmitBuffer();
+	for(uint8_t i =0; i<length; i++)
+		setTransmitBuffer(i,(uint8_t)cbuf[i]);
+
+	_u8TransmitBufferLength = length;
+
+
+	
+}
+
+void Node::setPayload(char* cbuf, uint8_t length){
+	clearTransmitBuffer();
+	for(uint8_t i =0; i<length; i++)
+		setTransmitBuffer(i,(uint8_t)cbuf[i]);
+
+	_u8TransmitBufferLength = length;
+
+}
+*/
+
+void Node::sendPayload(){
+
+  zbTx.setAddress64(_addr64);
+  zbTx.setPayload(_u8TransmitBuffer,_u8TransmitBufferLength);
   
   _xbee->send(zbTx);
-  
-  if(_xbee->readPacket(500)){
-      if (_xbee->getResponse().getApiId() == ZB_TX_STATUS_RESPONSE) {
-        
-         _xbee->getResponse().getZBTxStatusResponse(txStatus);
-
-      // get the delivery status, the fifth byte
-      if (txStatus.getDeliveryStatus() == SUCCESS) {
-
-        result = ku8XBSuccess;
-
-      } else {
-        // the remote XBee did not receive our packet. is it powered on?
-        result = ku8XBDeliveryError;
-      }
-    }
-    
-  }else if (_xbee->getResponse().isError()){
-    //_s->print("Error reading packet.  Error code: ");  
-    //_s->println(_xbee->getResponse().getErrorCode());
-    result = ku8XBPacketError;
-  }
-  else{
-    result = ku8XBResponseTimedOut;
-  }
  
-  
-  return result;  
-  
 }
 
-/**
-Retrieve data from response buffer.
-
-@see Node::clearResponseBuffer()
-@param u8Index index of response buffer array (0x00..0x3F)
-@return value in position u8Index of response buffer (0x0000..0xFFFF)
-@ingroup buffer
-*/
-uint8_t Node::getResponseBuffer(uint8_t u8Index) {
-  if (u8Index < ku8MaxBufferSize) {
-    return _u8ResponseBuffer[u8Index];
-  } else {
-    return 0xFF;
-  }
-}
-
-/**
-Clear Node response buffer.
-
-@see Node::getResponseBuffer(uint8_t u8Index)
-@ingroup buffer
-*/
-void Node::clearResponseBuffer() {
-  uint8_t i;
-
-  for (i = 0; i < ku8MaxBufferSize; i++) {
-    _u8ResponseBuffer[i] = 0;
-  }
+uint8_t Node::sendPayloadAndWait(){
+	
+	zbTx.setAddress64(_addr64);
+    zbTx.setPayload(_u8TransmitBuffer,_u8TransmitBufferLength);
+	
+	return _xbee->sendAndWait(zbTx, XBEE_TIMEOUT);
 }
 
 
@@ -171,7 +148,7 @@ Place data in transmit buffer.
 @ingroup buffer
 */
 uint8_t Node::setTransmitBuffer(uint8_t u8Index, uint8_t u8Value) {
-  if (u8Index < ku8MaxBufferSize) {
+  if (u8Index < MAX_BUF_SIZE) {
     _u8TransmitBuffer[u8Index] = u8Value;
     return ku8XBSuccess;
   } else {
@@ -189,7 +166,7 @@ Clear Node transmit buffer.
 void Node::clearTransmitBuffer() {
   uint8_t i;
 
-  for (i = 0; i < ku8MaxBufferSize; i++) {
+  for (i = 0; i < MAX_BUF_SIZE; i++) {
     _u8TransmitBuffer[i] = 0;
   }
 }
@@ -204,15 +181,34 @@ void Node::printDirectory(File dir, int numTabs) {
     }
     for (uint8_t i = 0; i < numTabs; i++) {
       _s->print('\t');
+	  setPayload("\t");
+	  sendPayload();
     }
     _s->print(entry.name());
+	
+	setPayload(entry.name());
+	sendPayload();
     if (entry.isDirectory()) {
       _s->println("/");
+	  
+	setPayload("/\n");
+	sendPayload();
+	  
       printDirectory(entry, numTabs + 1);
     } else {
       // files have sizes, directories do not
       _s->print("\t\t");
       _s->println(entry.size(), DEC);
+	  
+		setPayload("\t\t");
+		sendPayload();
+	
+		setPayload(String((int)entry.size()));
+		sendPayload();
+		
+		setPayload("/\n");
+		sendPayload();
+	
     }
     entry.close();
   }
@@ -232,7 +228,6 @@ bool Node::generateImageFilename(char* szFileName){
   
   return true;
 }
-
 
 bool Node::getRecentImageFilename(char* szFileName){
   strcpy(szFileName, "IMAGE00.JPG");
@@ -259,7 +254,27 @@ bool Node::getRecentImageFilename(char* szFileName){
   szFileName[5] = '0' + maxVal/10;
   szFileName[6] = '0' + maxVal%10;
   
+  _s->print("Filename: ");
+  _s->println(szFileName);
+  
+  delay(100);
+  
   return true;
 }
 
+uint16_t Node::convertFileSizeToPackets(uint16_t fileSize){
+	
+	uint16_t numPackets = static_cast<int>((fileSize/MAX_BUF_SIZE));
+	numPackets += (fileSize % MAX_BUF_SIZE) == 0 ? 0 : 1;
+	
+	return numPackets;
+}
 
+uint16_t Node::convertPacketToFilePosition(uint16_t packetIndex, uint16_t fileSize){
+	
+	uint16_t pos = packetIndex*MAX_BUF_SIZE;
+	
+	if(pos > fileSize) return 1;
+	else return pos;
+	
+}

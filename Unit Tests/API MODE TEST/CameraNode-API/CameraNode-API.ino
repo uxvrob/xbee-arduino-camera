@@ -10,54 +10,18 @@
 
 bool cmdComplete = false;
 
-uint8_t payload[] = { 3, 2 };
-
 String cmdBuf = "";
 
 CameraNode camNode = CameraNode(CAM_RX_PIN, CAM_TX_PIN);
 
-void setup() {
-
-  Serial.begin(SER_BAUD_RATE);
-  camNode.setXbeeSerial(Serial);
-  camNode.setRxAddress(GATEWAY_SH_ADDR,GATEWAY_SL_ADDR);
-  camNode.setReceiveCb(zbCallback);
-  camNode.begin();
-
-}
-
-/*
-void loop(){
+void _zbRxCb(ZBRxResponse& rx, uintptr_t){
   
-  image_file_t* ift;
-  ift = new image_file_t[1];
-
-  camNode.getRecentImageFilename(ift->szName);
-  
-  Serial.println(ift->szName);
-  Serial.println("Response: ");
-  //camNode.sendPayload(payload,sizeof(payload));
-  Serial.print(camNode.sendPayload(ift->szName,sizeof(ift->szName)),HEX);
-  
-  delete [] ift; 
-  delay(1500);
-}
-*/
-
-void loop(){
-  camNode.spin();
-}
-
-void zbCallback(ZBRxResponse& rx, uintptr_t){
-
-  
-  image_file_t* ift;
-  ift = new image_file_t[1];
-  Serial.print("CMD RX: ");
+  String cmdBuf = "";
   
   for(uint8_t i=0; i < rx.getDataLength(); i++)
     cmdBuf +=(char)rx.getData()[i];
   
+  Serial.print("CMD RX: ");
   Serial.println(cmdBuf);
 
   cmdBuf.trim();
@@ -65,23 +29,25 @@ void zbCallback(ZBRxResponse& rx, uintptr_t){
   if(cmdBuf.equals("AV+CGETS")){        // Send snapshot via Serial routine
 
         //takeSnapshotTransmitSaveToSD(ift);
-
-
+		
   }else if(cmdBuf.equals("AV+SGETS")){        // Send snapshot via Serial routine
     
-    camNode.takeSnapshotSaveToSD(ift);
-    camNode.sendSnapshotFile(ift->szName);
+    camNode.takeSnapshotSaveToSD();
+    camNode.sendSnapshotFile(camNode._ift.szName);
 
   }else if(cmdBuf.equals("AV+SNAP")){
     
-    camNode.takeSnapshotSaveToSD(ift);
+    camNode.takeSnapshotSaveToSD();
     
   }else if(cmdBuf.equals("AV+RECF")){
-    if(camNode.getRecentImageFilename(ift->szName)){
+	
+    if(camNode.getRecentImageFilename(camNode._ift.szName)){
 
-      File f = SD.open(ift->szName, FILE_READ);
+      File f = SD.open(camNode._ift.szName, FILE_READ);
       Serial.print(F("Recent: "));
-      Serial.print(ift->szName);
+      Serial.print(camNode._ift.szName);
+	  camNode.setPayload(camNode._ift.szName);
+	  camNode.sendPayload();
       Serial.print(F(" Size: "));
       Serial.println(f.size());
       f.rewindDirectory();
@@ -100,136 +66,53 @@ void zbCallback(ZBRxResponse& rx, uintptr_t){
   
   }else if(cmdBuf.equals("AV+CSEND")){
     
-    camNode.getRecentImageFilename(ift->szName);
-    camNode.sendSnapshotFile(ift->szName);
+    camNode.getRecentImageFilename(camNode._ift.szName);
+    camNode.sendSnapshotFile(camNode._ift.szName);
   
   }else if(cmdBuf.equals("AV+DEBUGON")){
 
     camNode.debugOn();
+	
+  }else if(cmdBuf.equals("AV+DEBUGOFF")){
+
+    camNode.debugOff();
   
   }else if(cmdBuf.equals("AV+JRES")){   // Command to reset the arduino.  NOT IMPLEMENTED YET.
   
     Serial.println(F("ROK"));
   
-  }else if(cmdBuf.equals("OK")){        // ACK type command
-    
-      
-  }else{                                // Invalid CMD received
-    //Serial.print("NOK: ");
-    //Serial.println(cmdBuf);
-    //Serial.write('\n');
+  }else if(cmdBuf.indexOf(',') != -1){
+	
+	// RX: {+,<packet_index>;}
+	int tknIdx = cmdBuf.indexOf(',');
+	
+	if(cmdBuf.substring(0,tknIdx).equals('+')){
+		
+		camNode._ift.uPacketIndex = cmdBuf.substring(cmdBuf.indexOf(',',tknIdx+1)).toInt();
+		
+	}
+	
+  }
+  else{
+	  
+	  Serial.println(F("AV+ERR,NOTREC"));
   }
 
   // Reset command buffers
   cmdBuf = "";
-  delete [] ift;
   
 }
 
+void setup() {
 
-/*
+  Serial.begin(SER_BAUD_RATE);
+  camNode.setXbeeSerial(Serial);
+  camNode.setRxAddress(GATEWAY_SH_ADDR,GATEWAY_SL_ADDR);
+  camNode.setReceiveCb(_zbRxCb);
+  camNode.begin();
+
+}
+
 void loop(){
-    
-
-    // Command state machine
-    // If a command string terminated by \n is received, process the string
-
-    image_file_t* ift;
-    ift = new image_file_t[1];
-    
-    
-    if(cmdComplete){
-
-      cmdBuf.trim();
-      
-      if(cmdBuf.equals("AV+CGETS")){        // Send snapshot via Serial routine
-
-        //takeSnapshotTransmitSaveToSD(ift);
-
-
-      }else if(cmdBuf.equals("AV+SGETS")){        // Send snapshot via Serial routine
-        
-        camNode.takeSnapshotSaveToSD(ift);
-        //sendSnapshotFile(ift->szName);
-
-      }else if(cmdBuf.equals("AV+SNAP")){
-        
-        camNode.takeSnapshotSaveToSD(ift);
-        
-      }else if(cmdBuf.equals("AV+RECF")){
-        if(camNode.getRecentImageFilename(ift->szName)){
-
-          File f = SD.open(ift->szName, FILE_READ);
-          Serial.print(F("Recent: "));
-          Serial.print(ift->szName);
-          Serial.print(F(" Size: "));
-          Serial.println(f.size());
-          f.rewindDirectory();
-          f.close();
-        }
-        else
-          Serial.println(F("No file created yet"));
-        
-      }else if(cmdBuf.equals("AV+FILES")){
-        
-        File root = SD.open("/");
-        root.rewindDirectory();
-        camNode.printDirectory(root, 0);
-        root.rewindDirectory();
-        root.close();
-      
-      }else if(cmdBuf.equals("AV+CSEND")){
-        
-        camNode.getRecentImageFilename(ift->szName);
-        //sendSnapshotFile(ift->szName);
-      
-      }else if(cmdBuf.equals("AV+DEBUGON")){
-
-        camNode.debugOn();
-      
-      }else if(cmdBuf.equals("AV+JRES")){   // Command to reset the arduino.  NOT IMPLEMENTED YET.
-      
-        Serial.println(F("ROK"));
-      
-      }else if(cmdBuf.equals("OK")){        // ACK type command
-        
-          
-      }else{                                // Invalid CMD received
-        //Serial.print("NOK: ");
-        //Serial.println(cmdBuf);
-        //Serial.write('\n');
-      }
-
-      // Reset command buffers
-      cmdBuf = "";
-      cmdComplete = false;
-  }
-
-  processSerial();
-
-  delete [] ift;
+  camNode.spin();
 }
-
-// Thread for processing serial events.  A byte or char is added to a buffer until 
-// a newline character is received.
-
-void processSerial(){
-
-  int bytesAvail = Serial.available();
-
-  if(bytesAvail > 0){
-  
-    for(int i = 0; i < bytesAvail; i++){
-      
-      char inChar = (char)Serial.read();
-      cmdBuf += inChar;
-  
-      if(inChar == '\n'){
-        cmdComplete = true;
-      }
-      
-    }
-  }
-  
-}
-*/
