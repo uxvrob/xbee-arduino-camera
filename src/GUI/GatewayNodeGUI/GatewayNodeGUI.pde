@@ -176,9 +176,8 @@ void draw() {
           progress.setProgress(norm(currentFileSize, 0,totalFileSize));
           progressLbl.setLabel("Transfer Timeout Occurred! "+str(round(progress.getProgress()*100))+"%"+" File Size: "+str(float(totalFileSize/1024))+"kb or "+str(totalFileSize)+" bytes");
     
-        
-        timer=0;
-        imgRead = false;
+        resetAll();
+
     }
     else if((currentFileSize == totalFileSize)){
 
@@ -190,123 +189,48 @@ void draw() {
         progress.setProgress(norm(currentFileSize, 0,totalFileSize));
         progressLbl.setLabel("Transfer Progress "+str(round(progress.getProgress()*100))+"%"+" File Size: "+str(float(totalFileSize/1024))+"kb or "+str(totalFileSize)+" bytes");
     }
+    
+    
   }
   
   
-   /**********************************************************
-  ******************** SERIAL PROCESSING *********************
-  **********************************************************/
   
-  if(cmdComplete){
-    
-    if(!imgRead){
-    
-     cmdBuf.trim();
-     println("cmdBuf recv: " + cmdBuf.trim());
-     String[] m = match(cmdBuf.trim(), "AV\\+(.*?);");
-     
-     if(m != null) {
-       String[] tkn = splitTokens(m[1], ", ");
-       
-       if(match(tkn[0],"CS") != null){ 
-         
-         
-         
-           txtAConsole.setText(txtAConsole.getText()
-                        + "Connected to Camera Node\n");      // AV+CS,0x01;
-                        
-           if(match(tkn[1],"0x01") != null){
-             
-             txtAConsole.setText(txtAConsole.getText()
-                        + "Camera is active and ready to take snaps!\n\n"); 
-             
-           }
-           else{
-             
-             txtAConsole.setText(txtAConsole.getText()
-                        + "Camera is having problems... is it plugged in properly?\n"
-                        + "Press RESET on Camera Node after fixing\n\n");
-           }
-          
-       
-       }else if(match(tkn[0],"CTRANS") != null) {                           // AV+CTRANS,<img_file_size_in_bytes>;  Start image transfer
-         totalFileSize = int(tkn[1]);
-         println("MATCH: TOTALFILESIZE",totalFileSize);
-         txtAConsole.setText(txtAConsole.getText() + 
-                             "Getting Image of size: " + totalFileSize + "...\n");
-                             
-         
-         // Switch to reading image byte stream in Serial Event handler and start timeout timer
-         imgRead = true;
-         
-         thread("processImgInput");
-       
-       }else if(match(tkn[0],"DEBUG") != null){
-         
-         if(match(tkn[1],"TAKESNAP_SD") != null){
-           txtAConsole.setText(txtAConsole.getText()
-                               + "Snapshot taken!\n"
-                               + "Arduino filename: "+tkn[2]+" Filesize: "+tkn[3]+" bytes\n");
-           
-         }
-         
-       }
-      
-       println("Match: "+m[1]);
-     }
-    }
-    
-    cmdComplete = false;
-    cmdBuf="";
-  }
-  
-  
-  if(!imgRead) processSerial(gwSerial);
+  processSerialResponse();
   
  
 }
 
-void actionPerformed (GUIEvent e) {
-  
-  if (e.getSource() == getSnapshotBtn) {
 
-      txtAConsole.setText(txtAConsole.getText() 
-                          + "Waiting for image data...\n"
-                          + "Grab a coffee... this will take awhile..\n");
-      
-      
-      //sendGatewayCmd("AV+CGETS");
-      sendGatewayCmd("AV+SGETS");
-      
-      
-      
 
-  } 
-  
-  if(e.getSource() == getRecentSnapBtn){
 
-    
-    txtAConsole.setText(txtAConsole.getText() 
-                          + "Getting most recent image stored...\n");
-    
-    sendGatewayCmd("AV+CSEND");
-     
-  }
-}
-
-void processSerial (Serial s){
+void serialEvent (Serial s){
     
     if(!imgRead){
       char inChar = s.readChar();
       cmdBuf += str(inChar);
       
-      if(inChar == ';'){
+      if(inChar == ';' || inChar == '\n'){
           cmdComplete = true;   
       }
       
       if(cmdBuf.length() > 100){
         cmdBuf="";
       }
+    }
+    else if(imgRead && imgWriter != null){
+      
+              try{
+                  
+                  imgWriter.write((byte)s.read());
+                  currentFileSize++;
+    
+              }
+              catch(IOException e){
+                e.printStackTrace();
+                txtAConsole.setText(txtAConsole.getText()
+                  + "Exception on serial read\n");
+              }
+      
     }
     
 }

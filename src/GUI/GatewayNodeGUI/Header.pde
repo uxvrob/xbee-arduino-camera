@@ -31,7 +31,7 @@ final int imgSizeHeight = 480;
 
 // Image streaming timeout
 
-final int TIMEOUT = 30000;  // in milliseconds (ms)
+final int TIMEOUT = 10000;  // in milliseconds (ms)
 
 // GUI Controls - Interfascia
 GUIController c;
@@ -64,8 +64,6 @@ int errCount = 0;
 char response;
 
 byte[] buffer;
-
-
 
 Serial gwSerial;
 
