@@ -13,7 +13,9 @@
 CameraNode::CameraNode(int cam_rx_pin, int cam_tx_pin):
   _nd(this),
   _camConn(new SoftwareSerial(cam_rx_pin, cam_tx_pin)),
-  _cam(new Adafruit_VC0706(this->_camConn))
+  _cam(new Adafruit_VC0706(this->_camConn)),
+  transferActive(false),
+  SDSaveActive(false)
 {
 	
 }
@@ -55,8 +57,6 @@ void CameraNode::takeSnapshotSaveToSD(){
     Serial.println(F("AV+ERR,GEN_FILENAME;"));
     return;
   }
-  
-   
     
   _ift.uSize = _cam->frameLength(); // Get the size of the image (frame) taken
   _ift.uPackets = _nd->convertFileSizeToPackets(_ift.uSize);
@@ -75,18 +75,13 @@ void CameraNode::takeSnapshotSaveToSD(){
 	Serial.println(F(";"));
   #endif
   
-
-  //if(SD.exists(_ift.szName)) SD.remove(_ift.szName);
-  
   File imgFile = SD.open(_ift.szName, FILE_WRITE);  // file object for image storage
-
-  
-  //if(imgFile.seek(0)) Serial.println(F("Seek successful"));
-  //if(imgFile.write("TEST") != 0) Serial.println(F("write success"));
   
   _nd->freeRam();
   
   if(!imgFile) Serial.println(F("AV+ERR,FILE_OPEN;"));
+  
+  SDSaveActive = true;
   
   while (_ift.uPacketIndex < _ift.uPackets && imgFile){
 	
@@ -100,7 +95,7 @@ void CameraNode::takeSnapshotSaveToSD(){
 
   }
   
-  
+  SDSaveActive = false;
   imgFile.flush();
   imgFile.close();  
 
@@ -132,8 +127,10 @@ void CameraNode::sendSnapshotFile(char* filename){
   Serial.print(F("File size: "));
   Serial.println(_ift.uSize);
   
-  uint8_t cbuf[MAX_BUF_SIZE];
+  uint8_t* cbuf;
+  cbuf = new uint8_t[MAX_BUF_SIZE];
 
+  transferActive = true;
   uint16_t bytesToSend = sprintf(cbuf,"AV+CTRANS,%u,%u;",_ift.uSize,_ift.uPackets);
 
   
@@ -144,7 +141,7 @@ void CameraNode::sendSnapshotFile(char* filename){
 	bool sendAgain = false;
 	
   
-	while ((_ift.uPacketIndex < _ift.uPackets) && (millis() - responseTime)<1000){
+	while ((_ift.uPacketIndex < _ift.uPackets) && (millis() - responseTime)<1000 && imgFile){
 
 		
 		if(!sendAgain){
@@ -152,8 +149,6 @@ void CameraNode::sendSnapshotFile(char* filename){
 			
 			imgFile.read(cbuf, bytesToSend);
 			
-			Serial.print(F("Packet: "));
-			Serial.println(_ift.uPacketIndex);
 		}
 
 		if(_nd->sendPayloadAndWait(cbuf,bytesToSend) == 0){
@@ -166,7 +161,6 @@ void CameraNode::sendSnapshotFile(char* filename){
 		else{
 			sendAgain = true;
 			Serial.print(F("AV+ERR,XBEE,sendSnapshotFile"));
-			//Serial.println(_nd->_xbee.getResponse().getErrorCode());
 		}
 
 	}
@@ -175,15 +169,15 @@ void CameraNode::sendSnapshotFile(char* filename){
   }
   else{
 	  Serial.print(F("AV+ERR,XBEE,sendSnapshotFile"));
-	  //Serial.println(_nd->_xbee.getResponse().getErrorCode());
   }
   
 
   if((_ift.uPacketIndex < _ift.uPackets)) 
 	  Serial.println(F("AV+ERR,TIMEOUT"));
   
+  delete [] cbuf;
   imgFile.close();
-  
+  transferActive = false;
 
 }
 

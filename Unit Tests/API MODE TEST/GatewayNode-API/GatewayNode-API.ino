@@ -1,6 +1,8 @@
 #include <XBee.h>
 #include <Printers.h>
-#include <SoftwareSerial.h>      
+#include <SoftwareSerial.h>
+
+
 
 XBeeWithCallbacks xbee;
 
@@ -20,14 +22,7 @@ uint32_t _lsb = 0x415B894A;
 SoftwareSerial xss = SoftwareSerial(A0,A1);
 
 void zbCallback(ZBRxResponse& rx, uintptr_t){
-	/*
-	ZBTxRequest tx;
-	
-	tx.setAddress64(rx.getRemoteAddress64());
-	tx.setPayload(rx.getFrameData() + rx.getDataOffset(), rx.getDataLength());
-	
-	xbee.send(tx);
-	*/
+
     for(uint8_t i=0; i < rx.getDataLength(); i++){
       Serial.write((char)rx.getData()[i]);
     }
@@ -54,7 +49,6 @@ void setup() {
 }
 
 void loop() {
-  // put your main code here, to run repeatedly:
 
     xbee.loop();
 

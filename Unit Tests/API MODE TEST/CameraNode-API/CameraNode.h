@@ -22,6 +22,8 @@ class CameraNode : public Node{
 	public:
 	
 	image_file_t _ift;
+	bool transferActive;
+	bool SDSaveActive;
 	
     CameraNode(int,int);
 
