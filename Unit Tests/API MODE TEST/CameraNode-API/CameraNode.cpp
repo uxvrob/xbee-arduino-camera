@@ -60,46 +60,68 @@ void CameraNode::takeSnapshotSaveToSD(){
   
   _ift.uSize = _cam->frameLength(); // Get the size of the image (frame) taken
   _ift.uPackets = _nd->convertFileSizeToPackets(_ift.uSize);
+  _ift.uPacketIndex=0;
 
   
-  if(_debugOn){ 
+  if(!_debugOn){ 
 	_nd->_s->print("AV+DEBUG,TAKESNAP_SD,");
 	_nd->_s->print(_ift.szName);
 	_nd->_s->print(",");
 	_nd->_s->print(_ift.uSize);
+	_nd->_s->print(",");
+	_nd->_s->print(_ift.uPackets);
+	_nd->_s->print(",");
+	_nd->_s->print(_ift.uPacketIndex);
 	_nd->_s->println(";");
+
   }
   
-  /*
+  
   uint8_t *buffer;                     // transmission buffer
   
-  File imgFile = SD.open(_ift.szName, FILE_WRITE);  // file object for image storage
+  //File imgFile = SD.open(_ift.szName, FILE_WRITE);  // file object for image storage
 
   // Sending image via serial
   
+  
+  uint16_t fileSize=0;
+  
   while (_ift.uPacketIndex < _ift.uPackets){
-    
-    // read IMG_MAX_BUF_SIZE bytes at a time;
-    uint8_t bytesToRead = (_ift.uPacketIndex == _ift.uPackets-1)?(_ift.uSize - (_ift.uPacketIndex*MAX_BUF_SIZE)):MAX_BUF_SIZE;
- 
-    buffer = _cam->readPicture(bytesToRead);
-    imgFile.write(buffer, bytesToRead);
 	
-    _ift.uPacketIndex++;
-    
+    // read IMG_MAX_BUF_SIZE bytes at a time;
+	
+    uint16_t bytesToRead = (_ift.uPacketIndex == _ift.uPackets-1)?(_ift.uSize - (_ift.uPacketIndex*MAX_BUF_SIZE)):MAX_BUF_SIZE;
+ 
+	fileSize += bytesToRead;
+	_nd->_s->print(_ift.uPacketIndex);
+	_nd->_s->print(",");
+	_nd->_s->print(bytesToRead);
+	_nd->_s->print(",");
+	_nd->_s->println(fileSize);
+		
+	//buffer = _cam->readPicture(bytesToRead);
+	
+    //imgFile.write(buffer, bytesToRead);
+	
+	_ift.uPacketIndex++;
+
   }
-
-  imgFile.flush();
-  imgFile.close();
-
+  delay(10);
+  
+  _nd->_s->print("SUCCESS: ");
+  _nd->_s->print(_ift.uSize);
+  //imgFile.flush();
+  //imgFile.close();
+  
+  
+	/*
   if(!_cam->resumeVideo()){
     _nd->_s->println("AV+ERR,RESUME_VIDEO;");
-    return false;
   }
-
-  return true;
   */
   
+
+
 }
 
 
