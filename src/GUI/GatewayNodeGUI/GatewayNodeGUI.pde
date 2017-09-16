@@ -171,17 +171,6 @@ void draw() {
       txtAConsole.setText(txtAConsole.getText()
                                    + "Gateway timeout on image transfer. Time: " + str(timer) + " ms\n"
                                    + "Received File size: "+str(currentFileSize)+" Total File Size: "+ str(totalFileSize)+"\n\n");
-      
-      try{
-         imgWriter.flush();
-         imgWriter.close();
-       }
-       catch(IOException e){
-         e.printStackTrace();
-         txtAConsole.setText(txtAConsole.getText()+
-                             "Exception generated on file close...\n");
-                            
-       }
                
       
           progress.setProgress(norm(currentFileSize, 0,totalFileSize));
@@ -192,37 +181,7 @@ void draw() {
         imgRead = false;
     }
     else if((currentFileSize == totalFileSize)){
-      
-             try{
-               imgWriter.flush();
-               imgWriter.close();
-             }
-             catch(IOException e){
-               e.printStackTrace();
-               txtAConsole.setText(txtAConsole.getText()+
-                                   "Exception generated on file close...\n");
-                                   
-               imgRead = false;
-               return;
-             }
-             
 
-             txtAConsole.setText(txtAConsole.getText()
-                                 +"Transfer complete. File: "+recvImgFileName + "\n");
-             try{
-               imgFile = loadImage(sketchPath() + "/" + recvImgFileName);
-               txtAConsole.setText(txtAConsole.getText()
-                                 + "New image width x height: "+str(imgFile.width)+" x " + str(imgFile.height)+ "\n\n");
-             }
-             catch(Exception e){
-                 e.printStackTrace();
-                 txtAConsole.setText(txtAConsole.getText()
-                               +"Could not load image... currentFileSize: "+currentFileSize + "\n\n");
-  
-                 imgFile = loadImage(sketchPath() +"/default.jpg");
-             }
-
-             imgRead = false;
       
       progress.setProgress(norm(currentFileSize, 0,totalFileSize));
       progressLbl.setLabel("Transfer Complete! "+str(round(progress.getProgress()*100))+"%"+" File Size: "+str(float(totalFileSize/1024))+"kb or "+str(totalFileSize)+" bytes");
