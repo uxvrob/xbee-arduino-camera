@@ -39,6 +39,9 @@ class Node {
 	ZBRxResponse zbRx;
 	ZBTxRequest  zbTx;
 	ZBTxStatusResponse zbTxStatus;
+	
+	uint8_t _u8TransmitBuffer[MAX_BUF_SIZE];
+    uint8_t _u8TransmitBufferLength;
 
     static const uint8_t ku8XBSuccess                = 0x00;
     static const uint8_t ku8XBIllegalDataAddress     = 0x02;
@@ -55,18 +58,32 @@ class Node {
     void setXbeeSerial(Stream&);
     void setRxAddress(uint32_t, uint32_t);
     
-	void setPayload(String);
+	void sendPayload(String);
 	
 	template <typename T>
-	void setPayload(T* cbuf, uint8_t length){
+	void sendPayload(T* cbuf, uint8_t length){
 		clearTransmitBuffer();
 		for(uint8_t i =0; i<length; i++)
 			setTransmitBuffer(i,(uint8_t)cbuf[i]);
 		_u8TransmitBufferLength = length;
+		
+		_sendPayload();
 	}
 	
-	void sendPayload();
-	uint8_t sendPayloadAndWait();
+	template <typename T>
+	uint8_t sendPayloadAndWait(T* cbuf, uint8_t length){
+		
+		clearTransmitBuffer();
+		
+		for(uint8_t i =0; i<length; i++)
+			setTransmitBuffer(i,(uint8_t)cbuf[i]);
+		_u8TransmitBufferLength = length;
+		
+		zbTx.setPayload(_u8TransmitBuffer,_u8TransmitBufferLength);
+	
+		return _xbee->sendAndWait(zbTx, XBEE_TIMEOUT);
+	}
+	
     void printXBAddress(void);
     void setReceiveCb(void(*)());
 
@@ -82,11 +99,12 @@ class Node {
     bool getRecentImageFilename(char*);
     bool generateImageFilename(char*); 
 	
+	int freeRam();
+	
 	uint16_t convertFileSizeToPackets(uint16_t);
 	uint16_t convertPacketToFilePosition(uint16_t, uint16_t);
 
-    uint8_t _u8TransmitBuffer[MAX_BUF_SIZE];
-    uint8_t _u8TransmitBufferLength;
+
     
 	protected:
   
@@ -95,6 +113,9 @@ class Node {
 	private:
 
 	XBeeAddress64 _addr64;
+
+	void _sendPayload();
+	
 	void (*_zbReceiveCb)(ZBRxResponse&, uintptr_t);
 	
 

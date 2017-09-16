@@ -20,17 +20,18 @@ CameraNode::CameraNode(int cam_rx_pin, int cam_tx_pin):
 
 void CameraNode::begin(){
 	
+	  _nd->_s->print("FREE RAM: ");
+  _nd->_s->println(_nd->freeRam());
+	
     _nd->begin();
   
     // Try to locate the camera
   if (_cam->begin()) {
     _nd->_s->println(F("AV+CS,0x01;"));
-	_nd->setPayload("AV+CS,0x01;");
-	_nd->sendPayload();
+	_nd->sendPayload("AV+CS,0x01;");
   } else {
     _nd->_s->println(F("AV+CS,0x00;"));
-	_nd->setPayload("AV+CS,0x00;");
-	_nd->sendPayload();
+	_nd->sendPayload("AV+CS,0x00;");
     return;
   }
 
@@ -39,6 +40,13 @@ void CameraNode::begin(){
   
   _cam->setImageSize(VC0706_640x480);        // biggest
   //_cam->setImageSize(VC0706_160x120);          // small
+  
+  //_cam->takePicture();
+  
+  //_cam->resumeVideo();
+  
+  _nd->_s->print(F("FREE RAM: "));
+  _nd->_s->println(_nd->freeRam());
 
 }
 
@@ -52,39 +60,37 @@ void CameraNode::takeSnapshotSaveToSD(){
 
   // Create an image with incremental name IMAGExx.JPG
   
-
+  /*
   if(!generateImageFilename(_ift.szName)){
-    _nd->_s->println("AV+ERR,GEN_FILENAME;");
+    _nd->_s->println(F("AV+ERR,GEN_FILENAME;"));
     return;
   }
+  */
   
+  
+  strcpy(_ift.szName, "IMAGE09.JPG");
   _ift.uSize = _cam->frameLength(); // Get the size of the image (frame) taken
   _ift.uPackets = _nd->convertFileSizeToPackets(_ift.uSize);
   _ift.uPacketIndex=0;
 
   
   if(!_debugOn){ 
-	_nd->_s->print("AV+DEBUG,TAKESNAP_SD,");
+	_nd->_s->print(F("AV+DEBUG,TAKESNAP_SD,"));
 	_nd->_s->print(_ift.szName);
-	_nd->_s->print(",");
+	_nd->_s->print(F(","));
 	_nd->_s->print(_ift.uSize);
-	_nd->_s->print(",");
+	_nd->_s->print(F(","));
 	_nd->_s->print(_ift.uPackets);
-	_nd->_s->print(",");
+	_nd->_s->print(F(","));
 	_nd->_s->print(_ift.uPacketIndex);
-	_nd->_s->println(";");
-
+	_nd->_s->println(F(";"));
   }
   
   
-  uint8_t *buffer;                     // transmission buffer
-  
-  //File imgFile = SD.open(_ift.szName, FILE_WRITE);  // file object for image storage
+  File imgFile = SD.open(_ift.szName, FILE_WRITE);  // file object for image storage
 
   // Sending image via serial
   
-  
-  uint16_t fileSize=0;
   
   while (_ift.uPacketIndex < _ift.uPackets){
 	
@@ -92,35 +98,30 @@ void CameraNode::takeSnapshotSaveToSD(){
 	
     uint16_t bytesToRead = (_ift.uPacketIndex == _ift.uPackets-1)?(_ift.uSize - (_ift.uPacketIndex*MAX_BUF_SIZE)):MAX_BUF_SIZE;
  
-	fileSize += bytesToRead;
-	_nd->_s->print(_ift.uPacketIndex);
-	_nd->_s->print(",");
-	_nd->_s->print(bytesToRead);
-	_nd->_s->print(",");
-	_nd->_s->println(fileSize);
-		
-	//buffer = _cam->readPicture(bytesToRead);
+	uint8_t* buf = _cam->readPicture(bytesToRead);
 	
-    //imgFile.write(buffer, bytesToRead);
-	
+    imgFile.write(buf, bytesToRead);
+	//_nd->_s->write(buf);
+	//_nd->_s->print(F("FREE RAM: "));
+	//_nd->_s->println(_nd->freeRam());
+  
 	_ift.uPacketIndex++;
 
   }
-  delay(10);
   
-  _nd->_s->print("SUCCESS: ");
-  _nd->_s->print(_ift.uSize);
-  //imgFile.flush();
-  //imgFile.close();
+  _nd->_s->print(F("SUCCESS: "));
+  _nd->_s->println(_ift.uSize);
+  _nd->_s->print(F("FREE RAM: "));
+  _nd->_s->println(_nd->freeRam());
   
-  
-	/*
-  if(!_cam->resumeVideo()){
-    _nd->_s->println("AV+ERR,RESUME_VIDEO;");
-  }
-  */
+  imgFile.flush();
+  imgFile.close();
+
   
 
+  if(!_cam->resumeVideo()){
+    _nd->_s->println(F("AV+ERR,RESUME_VIDEO;"));
+  }
 
 }
 
@@ -128,7 +129,7 @@ void CameraNode::takeSnapshotSaveToSD(){
 void CameraNode::sendSnapshotFile(char* filename){
 
   if(!SD.exists(filename)){
-    _nd->_s->println("AV+ERR,FILE_NO_EXIST;");
+    _nd->_s->println(F("AV+ERR,FILE_NO_EXIST;"));
     return;
   }
   
@@ -152,9 +153,9 @@ void CameraNode::sendSnapshotFile(char* filename){
 
   uint8_t bytesToSend = sprintf(cbuf,"AV+CTRANS,%d,%d;",_ift.uSize,_ift.uPackets);
   
-  setPayload(cbuf,bytesToSend);
+  _nd->sendPayload(cbuf,bytesToSend);
 
-  if(_nd->sendPayloadAndWait() == 0){
+  if(_nd->sendPayloadAndWait(cbuf,bytesToSend) == 0){
 	  
 	// Sending image via serial
 	uint16_t responseTime = millis();
@@ -169,12 +170,10 @@ void CameraNode::sendSnapshotFile(char* filename){
 		if(!sendAgain){
 			bytesToSend = (_ift.uPacketIndex == _ift.uPackets-1)?(_ift.uSize - (_ift.uPacketIndex*MAX_BUF_SIZE)):MAX_BUF_SIZE;
 			
-			_nd->clearTransmitBuffer();
 			imgFile.read(_nd->_u8TransmitBuffer, bytesToSend);
-			_nd->_u8TransmitBufferLength = bytesToSend;
 		}
 
-		if(_nd->sendPayloadAndWait() == 0){
+		if(_nd->sendPayloadAndWait(_nd->_u8TransmitBuffer,bytesToSend) == 0){
 			sendAgain = false;
 			responseTime = millis();
 			_ift.uPacketIndex++;

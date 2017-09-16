@@ -60,6 +60,7 @@ void Node::setXbeeSerial(Stream& ser){
 void Node::setRxAddress(uint32_t msb, uint32_t lsb){
 	_addr64.setMsb(msb);
 	_addr64.setLsb(lsb);
+	zbTx.setAddress64(_addr64);
 }
 void Node::printXBAddress(){
 
@@ -86,55 +87,23 @@ void Node::setReceiveCb(void (*zbReceiveCb)()){
 }
 
 
-
-
-void Node::setPayload(String str){
+void Node::sendPayload(String str){
 	clearTransmitBuffer();
 	for(uint8_t i =0; i<str.length(); i++)
 		setTransmitBuffer(i,(uint8_t)str[i]);
 
 	_u8TransmitBufferLength = str.length();
+	
+	_sendPayload();
 
 	
 }
 
-/*
-void Node::setPayload(uint8_t* cbuf, uint8_t length){
-	clearTransmitBuffer();
-	for(uint8_t i =0; i<length; i++)
-		setTransmitBuffer(i,(uint8_t)cbuf[i]);
+void Node::_sendPayload(){
 
-	_u8TransmitBufferLength = length;
-
-
+	zbTx.setPayload(_u8TransmitBuffer,_u8TransmitBufferLength);
+	_xbee->send(zbTx);
 	
-}
-
-void Node::setPayload(char* cbuf, uint8_t length){
-	clearTransmitBuffer();
-	for(uint8_t i =0; i<length; i++)
-		setTransmitBuffer(i,(uint8_t)cbuf[i]);
-
-	_u8TransmitBufferLength = length;
-
-}
-*/
-
-void Node::sendPayload(){
-
-  zbTx.setAddress64(_addr64);
-  zbTx.setPayload(_u8TransmitBuffer,_u8TransmitBufferLength);
-  
-  _xbee->send(zbTx);
- 
-}
-
-uint8_t Node::sendPayloadAndWait(){
-	
-	zbTx.setAddress64(_addr64);
-    zbTx.setPayload(_u8TransmitBuffer,_u8TransmitBufferLength);
-	
-	return _xbee->sendAndWait(zbTx, XBEE_TIMEOUT);
 }
 
 
@@ -181,18 +150,17 @@ void Node::printDirectory(File dir, int numTabs) {
     }
     for (uint8_t i = 0; i < numTabs; i++) {
       _s->print('\t');
-	  setPayload("\t");
-	  sendPayload();
+	  //sendPayload("\t");
+
     }
     _s->print(entry.name());
 	
-	setPayload(entry.name());
-	sendPayload();
+	//sendPayload(entry.name());
+
     if (entry.isDirectory()) {
       _s->println("/");
 	  
-	setPayload("/\n");
-	sendPayload();
+		//sendPayload("/\n");
 	  
       printDirectory(entry, numTabs + 1);
     } else {
@@ -200,14 +168,11 @@ void Node::printDirectory(File dir, int numTabs) {
       _s->print("\t\t");
       _s->println(entry.size(), DEC);
 	  
-		setPayload("\t\t");
-		sendPayload();
+		//sendPayload("\t\t");
+
 	
-		setPayload(String((int)entry.size()));
-		sendPayload();
-		
-		setPayload("/\n");
-		sendPayload();
+		//sendPayload(String((int)entry.size()));
+		//sendPayload("/\n");
 	
     }
     entry.close();
@@ -278,3 +243,10 @@ uint16_t Node::convertPacketToFilePosition(uint16_t packetIndex, uint16_t fileSi
 	else return pos;
 	
 }
+
+int Node::freeRam () {
+  extern int __heap_start, *__brkval; 
+  int v; 
+  return (int) &v - (__brkval == 0 ? (int) &__heap_start : (int) __brkval); 
+}
+

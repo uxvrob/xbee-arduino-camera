@@ -20,9 +20,6 @@ void _zbRxCb(ZBRxResponse& rx, uintptr_t){
   
   for(uint8_t i=0; i < rx.getDataLength(); i++)
     cmdBuf +=(char)rx.getData()[i];
-  
-  Serial.print("CMD RX: ");
-  Serial.println(cmdBuf);
 
   cmdBuf.trim();
 
@@ -46,8 +43,7 @@ void _zbRxCb(ZBRxResponse& rx, uintptr_t){
       File f = SD.open(camNode._ift.szName, FILE_READ);
       Serial.print(F("Recent: "));
       Serial.print(camNode._ift.szName);
-	  camNode.setPayload(camNode._ift.szName);
-	  camNode.sendPayload();
+	  camNode.sendPayload(camNode._ift.szName);
       Serial.print(F(" Size: "));
       Serial.println(f.size());
       f.rewindDirectory();
@@ -77,7 +73,8 @@ void _zbRxCb(ZBRxResponse& rx, uintptr_t){
 
     camNode.debugOff();
   
-  }else if(cmdBuf.equals("AV+JRES")){   // Command to reset the arduino.  NOT IMPLEMENTED YET.
+  }else if(cmdBuf.equals("AV+JRES")){   
+  // Command to reset the arduino.  NOT IMPLEMENTED YET.
   
     Serial.println(F("ROK"));
   
