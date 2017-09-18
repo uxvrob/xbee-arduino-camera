@@ -22,6 +22,7 @@
 #define MAX_BUF_SIZE 32         	   // Byte batch of image to send via Serial
 
 #define XBEE_TIMEOUT 500
+#define TRANSFER_TIMEOUT 5000
 
 #define lowByte(w)           ((w) & 0xFF)
 #define highByte(w)         (((w) >> 8) & 0xFF)

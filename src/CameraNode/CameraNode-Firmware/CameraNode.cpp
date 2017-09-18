@@ -156,7 +156,7 @@ void CameraNode::sendSnapshotFile(char* filename){
   
 	while ((_ift.uPacketIndex < _ift.uPackets)){
 
-    if((millis() - responseTime)>3000){
+    if((millis() - responseTime)>TRANSFER_TIMEOUT){
       Serial.println(F("Timeout"));
       break;
 
