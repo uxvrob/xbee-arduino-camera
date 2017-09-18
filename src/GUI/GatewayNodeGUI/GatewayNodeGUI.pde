@@ -190,8 +190,8 @@ void draw() {
       
           progress.setProgress(norm(currentFileSize, 0,totalFileSize));
           progressLbl.setLabel("Transfer Timeout Occurred! "+str(round(progress.getProgress()*100))+"%"+" File Size: "+str(float(totalFileSize/1024))+"kb or "+str(totalFileSize)+" bytes");
-    
-        resetAll();
+       resetAll();
+       imgRead = false;
 
     }
     else if((currentFileSize == totalFileSize)){
@@ -199,10 +199,17 @@ void draw() {
       
       progress.setProgress(norm(currentFileSize, 0,totalFileSize));
       progressLbl.setLabel("Transfer Complete! "+str(round(progress.getProgress()*100))+"%"+" File Size: "+str(float(totalFileSize/1024))+"kb or "+str(totalFileSize)+" bytes");
+      
+      
+      closeImageTransfer();
+      imgRead = false;
+      
     }
     else{
         progress.setProgress(norm(currentFileSize, 0,totalFileSize));
         progressLbl.setLabel("Transfer Progress "+str(round(progress.getProgress()*100))+"%"+" File Size: "+str(float(totalFileSize/1024))+"kb or "+str(totalFileSize)+" bytes");
+        
+        //gwSerial.buffer(min((totalFileSize-currentFileSize),BUF_SIZE));
     }
     
     
@@ -214,9 +221,6 @@ void draw() {
   
  
 }
-
-
-
 
 void serialEvent (Serial s){
   
@@ -235,27 +239,36 @@ void serialEvent (Serial s){
         s.clear();
       }
     }
-    else if(imgRead){
-      
-          try{
-              int d_size = s.available();
-              byte[] d = new byte[d_size];
-              
-              d = s.readBytes(d_size);
-              
-              imgWriter.write(d);
-              currentFileSize += d_size;
-              
-              timer = millis(); // Timer reset
-              
-              d = null;
+    else{
+      if((currentFileSize<totalFileSize) && s.available() > 0){
+        
+        if(((currentFileSize % 128) == 0)){
+           println("Current Filesize: "+str(currentFileSize)+"\n");
+        }
+        
+        try{
+            
+            int d_size = s.available();
+            byte[] d = new byte[d_size];
+            
+            d = s.readBytes(d_size);
+            
+            imgWriter.write(d);
+            currentFileSize += d_size;
+            
+            timer = millis(); // Timer reset
+            
+            d = null;
 
-          }
-          catch(IOException e){
-            e.printStackTrace();
-            txtAConsole.setText(txtAConsole.getText()
-              + "Exception on serial read\n");
-          }
+        }
+        catch(IOException e){
+          e.printStackTrace();
+          txtAConsole.setText(txtAConsole.getText()
+            + "Exception on serial read\n");
+        }
+          
+      }
+
       
     }
     

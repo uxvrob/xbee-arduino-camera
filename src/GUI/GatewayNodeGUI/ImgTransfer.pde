@@ -32,6 +32,28 @@ void saveImageFile(){
   
 }
 
+void closeImageTransfer(){
+  
+        saveImageFile();
+        
+        println("Image receipt successful!!");
+
+        txtAConsole.setText(txtAConsole.getText()
+                                 +"Transfer complete. File: " + recvImgFileName + "\n");
+         try{
+           imgFile = loadImage(sketchPath() + "/" + recvImgFileName);
+           println( "New image width x height: "+str(imgFile.width)+" x " + str(imgFile.height));
+         }
+         catch(Exception e){
+             e.printStackTrace();
+             txtAConsole.setText(txtAConsole.getText()
+                           +"Could not load image... currentFileSize: "+currentFileSize + "\n\n");
+    
+             imgFile = loadImage(sketchPath() +"/default.jpg");
+         }
+  
+}
+
 void processImgInput(){    
 
     createImageFile(); 
@@ -46,8 +68,9 @@ void processImgInput(){
     while((currentFileSize<=totalFileSize)){
 
         // Output a response every 128 bytes
-        if(((currentFileSize % 128) == 0) && currentFileSize > 10000){
+        if(((currentFileSize % 128) == 0)){
            println("Current Filesize: "+str(currentFileSize)+"\n");
+           timer = millis();
         }
         
         if(resetFlag ) return;

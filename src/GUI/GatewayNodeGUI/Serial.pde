@@ -1,5 +1,3 @@
-
-
 void processSerialResponse(){
   /**********************************************************
   ******************** SERIAL PROCESSING *********************
@@ -38,15 +36,21 @@ void processSerialResponse(){
           
        
        }else if(match(tkn[0],"CTRANS") != null) {                           // AV+CTRANS,<img_file_size_in_bytes>;  Start image transfer
+       
          totalFileSize = int(tkn[1]);
          println("MATCH: TOTALFILESIZE",totalFileSize);
          txtAConsole.setText(txtAConsole.getText() + 
                              "Getting Image of size: " + totalFileSize + "...\n");
                              
-         
          // Switch to reading image byte stream in Serial Event handler and start timeout timer
          println("Starting img transfer thread...");
-         thread("processImgInput");
+         
+         createImageFile(); 
+         currentFileSize=0;
+         imgRead = true;
+         timer = millis();
+         
+         //thread("processImgInput");
        
        }else if(match(tkn[0],"DEBUG") != null){
          
