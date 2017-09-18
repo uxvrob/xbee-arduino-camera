@@ -84,6 +84,9 @@ void CameraNode::takeSnapshotSaveToSD(){
   if(!imgFile) Serial.println(F("AV+ERR,FILE_OPEN;"));
   
   SDSaveActive = true;
+
+  char* cbuf;
+  cbuf = new uint8_t[MAX_BUF_SIZE];
   
   while (_ift.uPacketIndex < _ift.uPackets && imgFile){
 	
@@ -91,15 +94,23 @@ void CameraNode::takeSnapshotSaveToSD(){
 	
     uint16_t bytesToRead = (_ift.uPacketIndex == _ift.uPackets-1)?(_ift.uSize - (_ift.uPacketIndex*MAX_BUF_SIZE)):MAX_BUF_SIZE;
  
-	uint8_t* buf = _cam->readPicture(bytesToRead);
-	imgFile.write(buf, bytesToRead);
-	_ift.uPacketIndex++;
+	   uint8_t* buf = _cam->readPicture(bytesToRead);
+	   imgFile.write(buf, bytesToRead);
+	   _ift.uPacketIndex++;
+
+
+    if(_ift.uPacketIndex % 12 == 0){
+      uint16_t p_size = sprintf(cbuf,"AV+SDSAVE,%u,%u;",_ift.uPacketIndex,_ift.uPackets);
+      _nd->sendPayload(cbuf, p_size);
+    }
 
   }
   
   SDSaveActive = false;
   imgFile.flush();
   imgFile.close();  
+
+  delete [] cbuf;
 
   _cam->resumeVideo();
 
@@ -143,7 +154,18 @@ void CameraNode::sendSnapshotFile(char* filename){
 	bool sendAgain = false;
 	
   
-	while ((_ift.uPacketIndex < _ift.uPackets) && (millis() - responseTime)<1000 && imgFile){
+	while ((_ift.uPacketIndex < _ift.uPackets)){
+
+    if((millis() - responseTime)>3000){
+      Serial.println(F("Timeout"));
+      break;
+
+    }
+    else if(!imgFile){
+      Serial.println(F("IMG File problems"));
+
+      break;
+    }
 
 		
 		if(!sendAgain){
@@ -156,13 +178,12 @@ void CameraNode::sendSnapshotFile(char* filename){
 		if(_nd->sendPayloadAndWait(cbuf,bytesToSend) == 0){
 			sendAgain = false;
 			responseTime = millis();
-			
 			_ift.uPacketIndex++;
 		  
 		}
 		else{
 			sendAgain = true;
-			Serial.print(F("AV+ERR,XBEE,sendSnapshotFile"));
+			Serial.println(F("AV+ERR,XBEE,sendSnapshotFile"));
 		}
 
 	}
@@ -170,16 +191,23 @@ void CameraNode::sendSnapshotFile(char* filename){
 	  
   }
   else{
-	  Serial.print(F("AV+ERR,XBEE,sendSnapshotFile"));
+	  Serial.println(F("AV+ERR,XBEE,sendSnapshotFile"));
   }
   
 
-  if((_ift.uPacketIndex < _ift.uPackets)) 
-	  Serial.println(F("AV+ERR,TIMEOUT"));
+  if((_ift.uPacketIndex < _ift.uPackets)) {
+	  _nd->sendPayload(F("AV+ERR,TIMEOUT"));
+    Serial.print(F("PacketIndex: "));
+    Serial.print(_ift.uPacketIndex);
+    Serial.print(F(" Packets: "));
+    Serial.println(_ift.uPackets);
+  }
   
   delete [] cbuf;
   imgFile.close();
   transferActive = false;
+  _ift.uPacketIndex = 0;
+  _ift.uPackets = 0;
 
 }
 

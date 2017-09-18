@@ -50,7 +50,9 @@ void processSerialResponse(){
          imgRead = true;
          timer = millis();
          
-         //thread("processImgInput");
+         
+       }else if(match(tkn[0],"SDSAVE") != null) {                           // AV+SDSAVE,<packet_index>,<packets>;  Status of SD Card save;
+         println("PacketIndex: " + tkn[1] + " Packets: " + tkn[2]);
        
        }else if(match(tkn[0],"DEBUG") != null){
          
