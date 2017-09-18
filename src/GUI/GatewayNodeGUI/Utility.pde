@@ -33,6 +33,15 @@ void actionPerformed (GUIEvent e) {
     }
      
   }
+  
+  if(e.getSource() == resetBtn){
+    
+
+    
+    resetFlag = true;
+    resetAll();
+    
+  }
 }
 
 void sendGatewayCmd(String cmd){
@@ -42,65 +51,35 @@ void sendGatewayCmd(String cmd){
 
 }
 
-void createImageFile(){
-  
-  recvImgFileName = "IMAGE_";
-  recvImgFileName += String.valueOf(year());
-  recvImgFileName += String.valueOf(month());
-  recvImgFileName += String.valueOf(day());
-  recvImgFileName += "-";
-  recvImgFileName += String.valueOf(hour());
-  recvImgFileName += String.valueOf(minute());
-  recvImgFileName += ".jpg";
-  
-  imgWriter = createOutput(sketchPath()+"/"+recvImgFileName);
-  
-  
-}
-
-void saveImageFile(){
-  
-  try{
-    if(imgWriter != null){
-       imgWriter.flush();
-       imgWriter.close();
-    }
-   }
-   catch(IOException e){
-     e.printStackTrace();
-     txtAConsole.setText(txtAConsole.getText()+
-                         "Exception generated on file close...\n");
-                          
-  }
-  
-}
-
 void resetAll(){
+  
+      txtAConsole.setText(txtAConsole.getText() 
+                            + "Resetting...\n");
 
     timer=0;
     imgRead = false;
     cmdBuf = "";
     cmdComplete=false;
-    
-    
-    
 
-    saveImageFile();
-  
-   gwSerial.clear();
+   saveImageFile();
+ 
    gwSerial.stop();
    gwSerial = null;
-   delay(100);
-   while(gwSerial != null){
-     try{
-        gwSerial = new Serial(this, SER_PORT, SER_BAUD_RATE);
-     }
-     catch(Exception e){
-       e.printStackTrace();
-       txtAConsole.setText(txtAConsole.getText()+
-                           "Exception re-start serial...\n");
-    }
-    
+   
+
+   try{
+      gwSerial = new Serial(this, SER_PORT, SER_BAUD_RATE);
    }
+   catch(Exception e){
+     e.printStackTrace();
+     txtAConsole.setText(txtAConsole.getText()+
+                         "Exception re-start serial...\n");
+  }
+
+   
+   txtAConsole.setText(txtAConsole.getText()+
+                           "Soft reset complete... press reset button on the Arduinos...\n");
+                           
+   resetFlag = false;
   
 }

@@ -53,6 +53,9 @@ void setup() {
   int xpos_getRecentSnapBtn = xpos_getSnapshotBtn;
   int ypos_getRecentSnapBtn = ypos_getSnapshotBtn-btnHeight-10;
   
+  int xpos_resetBtn = xpos_getSnapshotBtn-btnWidth-10;
+  int ypos_resetBtn = ypos_getSnapshotBtn;
+  
   int xpos_progressBar = int(xpos_getSnapshotBtn+btnWidth+10);
   int ypos_progressBar = int(ypos_getSnapshotBtn+btnHeight/4);
   
@@ -61,6 +64,43 @@ void setup() {
   
   int xpos_txtAConsole = 50;
   int ypos_txtAConsole = 50;
+                 
+                
+  try{
+    getSnapshotBtn = new IFButton ("Take Snapshot and Get", xpos_getSnapshotBtn, ypos_getSnapshotBtn, btnWidth, btnHeight);
+    getSnapshotBtn.addActionListener(this);
+    c.add (getSnapshotBtn);
+    
+    getRecentSnapBtn = new IFButton ("Get Recent Snapshot", xpos_getRecentSnapBtn, ypos_getRecentSnapBtn, btnWidth, btnHeight);
+    getRecentSnapBtn.addActionListener(this);
+    c.add (getRecentSnapBtn);
+    
+    resetBtn = new IFButton("RESET",xpos_resetBtn,ypos_resetBtn, btnWidth, btnHeight);
+    resetBtn.addActionListener(this);
+    c.add (resetBtn);
+    
+    progress = new IFProgressBar (xpos_progressBar, ypos_progressBar, int(width*0.4));
+    c.add (progress);
+    
+    progressLbl = new IFLabel("Transfer Progress",xpos_progressLbl,ypos_progressLbl, 12);
+    c.add (progressLbl);
+    
+  }
+  catch(Exception e){
+    println ("Unhandeled exception");
+    exit();
+  }
+  
+  defaultLook = new IFLookAndFeel(this, IFLookAndFeel.DEFAULT);
+  c.setLookAndFeel(defaultLook);
+  
+  try{
+    imgFile = loadImage(sketchPath() +"/default.jpg");
+  }
+  catch(Exception e){
+    println ("Could not load main image... exiting...");
+    exit();
+  }
   
   txtAConsole = cp5.addTextarea("txt")
                   .setPosition(xpos_txtAConsole,ypos_txtAConsole)
@@ -71,33 +111,6 @@ void setup() {
                   .setColorBackground(color(255,100))
                   .setColorForeground(color(255,100))
                   .showScrollbar();
-                 
-                
-  try{
-    getSnapshotBtn = new IFButton ("Take Snapshot and Get", xpos_getSnapshotBtn, ypos_getSnapshotBtn, btnWidth, btnHeight);
-    getSnapshotBtn.addActionListener(this);
-    
-    getRecentSnapBtn = new IFButton ("Get Recent Snapshot", xpos_getRecentSnapBtn, ypos_getRecentSnapBtn, btnWidth, btnHeight);
-    getRecentSnapBtn.addActionListener(this);
-    
-    progress = new IFProgressBar (xpos_progressBar, ypos_progressBar, int(width*0.4));
-    progressLbl = new IFLabel("Transfer Progress",xpos_progressLbl,ypos_progressLbl, 12);
-    
-    imgFile = loadImage(sketchPath() +"/default.jpg");
-  }
-  catch(Exception e){
-    println ("Unhandeled exception");
-    exit();
-  }
-  
-  c.add (getSnapshotBtn);
-  c.add (getRecentSnapBtn);
-  c.add (progress);
-  c.add (progressLbl);
-
-  defaultLook = new IFLookAndFeel(this, IFLookAndFeel.DEFAULT);
-  
-  c.setLookAndFeel(defaultLook);
   
   txtAConsole.setText("Actual Image width x height: "+str(imgFile.width)+" x " + str(imgFile.height)
                       +"\nAdjusted image width x height: "+str(int(imgFile.width*0.15))+" x " + str(int(imgFile.height*0.15))
@@ -137,6 +150,8 @@ void draw() {
   
   getRecentSnapBtn.setPosition(getSnapshotBtn.getX(),getSnapshotBtn.getY()-(btnHeight+10));
   
+  resetBtn.setPosition(xpos_imgFile + imgSizeWidth + 10, ypos_imgFile);
+  
   progress.setPosition(getSnapshotBtn.getX()+getSnapshotBtn.getWidth()+10, int(getSnapshotBtn.getY()+getSnapshotBtn.getHeight()/4));
   
   progressLbl.setPosition(progress.getX(),progress.getY()-20);
@@ -167,7 +182,7 @@ void draw() {
    
   if(imgRead){
 
-    if((millis()-timer)>=TIMEOUT){
+    if((millis()-timer)>TIMEOUT){
       txtAConsole.setText(txtAConsole.getText()
                                    + "Gateway timeout on image transfer. Time: " + str(timer) + " ms\n"
                                    + "Received File size: "+str(currentFileSize)+" Total File Size: "+ str(totalFileSize)+"\n\n");
@@ -204,6 +219,8 @@ void draw() {
 
 
 void serialEvent (Serial s){
+  
+    if(cmdComplete) return;
     
     if(!imgRead){
       char inChar = s.readChar();
@@ -215,21 +232,30 @@ void serialEvent (Serial s){
       
       if(cmdBuf.length() > 100){
         cmdBuf="";
+        s.clear();
       }
     }
-    else if(imgRead && imgWriter != null){
+    else if(imgRead){
       
-              try{
-                  
-                  imgWriter.write((byte)s.read());
-                  currentFileSize++;
-    
-              }
-              catch(IOException e){
-                e.printStackTrace();
-                txtAConsole.setText(txtAConsole.getText()
-                  + "Exception on serial read\n");
-              }
+          try{
+              int d_size = s.available();
+              byte[] d = new byte[d_size];
+              
+              d = s.readBytes(d_size);
+              
+              imgWriter.write(d);
+              currentFileSize += d_size;
+              
+              timer = millis(); // Timer reset
+              
+              d = null;
+
+          }
+          catch(IOException e){
+            e.printStackTrace();
+            txtAConsole.setText(txtAConsole.getText()
+              + "Exception on serial read\n");
+          }
       
     }
     

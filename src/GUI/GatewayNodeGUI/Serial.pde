@@ -45,8 +45,7 @@ void processSerialResponse(){
                              
          
          // Switch to reading image byte stream in Serial Event handler and start timeout timer
-         imgRead = true;
-         
+         println("Starting img transfer thread...");
          thread("processImgInput");
        
        }else if(match(tkn[0],"DEBUG") != null){

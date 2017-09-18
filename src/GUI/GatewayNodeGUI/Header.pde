@@ -35,9 +35,13 @@ final int TIMEOUT = 10000;  // in milliseconds (ms)
 
 // GUI Controls - Interfascia
 GUIController c;
+
 IFLookAndFeel defaultLook;
+
 IFButton getSnapshotBtn;
 IFButton getRecentSnapBtn;
+IFButton resetBtn;
+
 IFProgressBar progress;
 IFLabel progressLbl;
 
@@ -62,6 +66,8 @@ int currentFileSize = 0;
 int timer = 0;
 int errCount = 0;
 char response;
+
+boolean resetFlag = false;
 
 byte[] buffer;
 
