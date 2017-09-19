@@ -231,10 +231,7 @@ void draw() {
         progress.setProgress(norm(currentFileSize, 0,totalFileSize));
         progressLbl.setLabel("Transfer Progress "+str(round(progress.getProgress()*100))+"%"+" File Size: "+str(float(totalFileSize/1024))+"kb or "+str(totalFileSize)+" bytes");
         
-        if((totalFileSize-currentFileSize)>BUF_SIZE*2)
-          gwSerial.buffer(BUF_SIZE);
-        else
-          gwSerial.buffer(1);
+
     }
     
     
