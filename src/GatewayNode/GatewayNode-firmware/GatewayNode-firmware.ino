@@ -1,30 +1,95 @@
-
+#include <XBee.h>
+#include <Printers.h>
 #include <SoftwareSerial.h>
 
-// RX,  TX
-SoftwareSerial xBeeSerial(A0,A1); //RX,TX
+
+
+XBeeWithCallbacks xbee;
+
+
+//XBeeResponse response = XBeeResponse();
+// create reusable response objects for responses we expect to handle 
+//ZBRxResponse rx = ZBRxResponse();
+
+char cmdBuf[25];
+uint8_t cmdidx = 0;
+bool cmdComplete =false;
+
+uint32_t _msb = 0x13A200;
+uint32_t _lsb = 0x415B894A;
+
+
+SoftwareSerial xss = SoftwareSerial(A0,A1);
+
+void zbCallback(ZBRxResponse& rx, uintptr_t){
+
+    for(uint8_t i=0; i < rx.getDataLength(); i++){
+      Serial.write((char)rx.getData()[i]);
+    }
+	
+	Serial.flush();
+	
+}
 
 void setup() {
   Serial.begin(57600);
-
   while(!Serial){
-    ;
+    
   }
 
-  Serial.println("USB Serial open...");
+  //xbee.onPacketError(printErrorCb, (uintptr_t)(Print*)&Serial);
+  //xbee.onTxStatusResponse(printErrorCb, (uintptr_t)(Print*)&Serial);
+  //xbee.onZBTxStatusResponse(printErrorCb, (uintptr_t)(Print*)&Serial);
+  xbee.onZBRxResponse(zbCallback);
   
-  xBeeSerial.begin(57600);
+  xbee.setSerial(xss);
+  xss.begin(57600);
 
+  Serial.println("Gateway started");
 }
 
 void loop() {
+
+    xbee.loop();
+
+   if(cmdComplete){
+      
+      XBeeAddress64 addr64 = XBeeAddress64(_msb, _lsb);
+      ZBTxRequest zbTx = ZBTxRequest(addr64, cmdBuf, cmdidx);
+      ZBTxStatusResponse txStatus = ZBTxStatusResponse();
+
+      xbee.sendAndWait(zbTx,500);
+	  
+       // Reset command buffers
+      cmdidx = 0;
+      cmdComplete = false;
+  }
+
+  processSerial();
+}
+
+
+
+
+void processSerial(){
+
+  int bytesAvail = Serial.available();
+
+  if(bytesAvail > 0){
   
-  if(xBeeSerial.available()>0){
-    Serial.write(xBeeSerial.read());
-    
+    for(int i = 0; i < bytesAvail; i++){
+      
+      char inChar = (char)Serial.read();
+      cmdBuf[cmdidx++] = inChar;
+
+      if(cmdidx >= sizeof(cmdBuf))
+        cmdidx=0;
+  
+      if(inChar == '\n'){
+        cmdComplete = true;
+      }
+      
+    }
   }
-  if(Serial.available() > 0){
-    xBeeSerial.write(Serial.read());
-  }
- 
+  
 }
