@@ -1,4 +1,4 @@
-/***************************************************************
+/*************************************************************** 
 * Gateway Node GUI 
 *
 * @author Robbie Sharma robbie -at- rsconsulting.ca
@@ -7,67 +7,6 @@
 * 
 ***************************************************************/
 
-import controlP5.*;
-import interfascia.*;
-import processing.serial.*;
-
-// Serial parameters
-/********************************************************************
- * Determine active serial port in Serial.list()[x] for port refernece
- * by uncommenting printArray block in setup() method
- *******************************************************************/
- 
-final String SER_PORT = "COM3";       //Serial.list()[2];
-final int SER_BAUD_RATE = 57600;      //This should match the Serial baud rate in the GatewayNode firmware
-final int BUF_SIZE = 32;              
-
-// Window parameters
-
-final int bgColor = 200;
-
-// Button Parameters
-
-final int btnWidth = 100;
-final int btnHeight = 30;
-
-// Image pixel size in GUI
-
-final int imgSizeWidth =  640;
-final int imgSizeHeight = 480;
-
-// Image streaming timeout
-
-final int TIMEOUT = 5000;  // in milliseconds (ms)
-
-// GUI Controls - Interfascia
-GUIController c;
-IFLookAndFeel defaultLook;
-IFButton getSnapshotBtn;
-IFButton getRecentSnapBtn;
-IFProgressBar progress;
-IFLabel progressLbl;
-
-// GUI Controls - ControlP5
-ControlP5 cp5;
-Textarea txtAConsole;
-
-// Command Parser/Buffer
-
-String cmdBuf = "";
-boolean cmdComplete = false;
-boolean imgRead;
-
-// Snapshot Image File Parameters
-
-PImage imgFile;
-OutputStream imgWriter;
-String recvImgFileName="";
-
-int totalFileSize = 0;
-int currentFileSize = 0;
-int timer = 0;
-
-Serial gwSerial;
 
 void setup() {
   
@@ -114,6 +53,9 @@ void setup() {
   int xpos_getRecentSnapBtn = xpos_getSnapshotBtn;
   int ypos_getRecentSnapBtn = ypos_getSnapshotBtn-btnHeight-10;
   
+  int xpos_resetBtn = xpos_getSnapshotBtn-btnWidth-10;
+  int ypos_resetBtn = ypos_getSnapshotBtn;
+  
   int xpos_progressBar = int(xpos_getSnapshotBtn+btnWidth+10);
   int ypos_progressBar = int(ypos_getSnapshotBtn+btnHeight/4);
   
@@ -122,6 +64,43 @@ void setup() {
   
   int xpos_txtAConsole = 50;
   int ypos_txtAConsole = 50;
+                 
+                
+  try{
+    getSnapshotBtn = new IFButton ("Take Snapshot and Get", xpos_getSnapshotBtn, ypos_getSnapshotBtn, btnWidth, btnHeight);
+    getSnapshotBtn.addActionListener(this);
+    c.add (getSnapshotBtn);
+    
+    getRecentSnapBtn = new IFButton ("Get Recent Snapshot", xpos_getRecentSnapBtn, ypos_getRecentSnapBtn, btnWidth, btnHeight);
+    getRecentSnapBtn.addActionListener(this);
+    c.add (getRecentSnapBtn);
+    
+    resetBtn = new IFButton("RESET",xpos_resetBtn,ypos_resetBtn, btnWidth, btnHeight);
+    resetBtn.addActionListener(this);
+    c.add (resetBtn);
+    
+    progress = new IFProgressBar (xpos_progressBar, ypos_progressBar, int(width*0.4));
+    c.add (progress);
+    
+    progressLbl = new IFLabel("Transfer Progress",xpos_progressLbl,ypos_progressLbl, 12);
+    c.add (progressLbl);
+    
+  }
+  catch(Exception e){
+    println ("Unhandeled exception");
+    exit();
+  }
+  
+  defaultLook = new IFLookAndFeel(this, IFLookAndFeel.DEFAULT);
+  c.setLookAndFeel(defaultLook);
+  
+  try{
+    imgFile = loadImage(sketchPath() +"/default.jpg");
+  }
+  catch(Exception e){
+    println ("Could not load main image... exiting...");
+    exit();
+  }
   
   txtAConsole = cp5.addTextarea("txt")
                   .setPosition(xpos_txtAConsole,ypos_txtAConsole)
@@ -132,33 +111,6 @@ void setup() {
                   .setColorBackground(color(255,100))
                   .setColorForeground(color(255,100))
                   .showScrollbar();
-                 
-                
-  try{
-    getSnapshotBtn = new IFButton ("Take Snapshot and Get", xpos_getSnapshotBtn, ypos_getSnapshotBtn, btnWidth, btnHeight);
-    getSnapshotBtn.addActionListener(this);
-    
-    getRecentSnapBtn = new IFButton ("Get Recent Snapshot", xpos_getRecentSnapBtn, ypos_getRecentSnapBtn, btnWidth, btnHeight);
-    getRecentSnapBtn.addActionListener(this);
-    
-    progress = new IFProgressBar (xpos_progressBar, ypos_progressBar, int(width*0.4));
-    progressLbl = new IFLabel("Transfer Progress",xpos_progressLbl,ypos_progressLbl, 12);
-    
-    imgFile = loadImage(sketchPath() +"/default.jpg");
-  }
-  catch(Exception e){
-    println ("Unhandeled exception");
-    exit();
-  }
-  
-  c.add (getSnapshotBtn);
-  c.add (getRecentSnapBtn);
-  c.add (progress);
-  c.add (progressLbl);
-
-  defaultLook = new IFLookAndFeel(this, IFLookAndFeel.DEFAULT);
-  
-  c.setLookAndFeel(defaultLook);
   
   txtAConsole.setText("Actual Image width x height: "+str(imgFile.width)+" x " + str(imgFile.height)
                       +"\nAdjusted image width x height: "+str(int(imgFile.width*0.15))+" x " + str(int(imgFile.height*0.15))
@@ -177,6 +129,10 @@ void setup() {
 
 void draw() {
   
+   /**********************************************************
+  ***************** SETUP GUI AND DRAW IMAGE *****************
+  **********************************************************/
+  
   background(200);
  
   int xpos_imgFile = int(width-imgSizeWidth*1.5+100);
@@ -186,11 +142,15 @@ void draw() {
   
   image(imgFile,xpos_imgFile,ypos_imgFile, imgSizeWidth, imgSizeHeight);
   
-  // Re-position controls
+   /**********************************************************
+  ******************** SETUP CONTROLS ************************
+  **********************************************************/
   
-  getSnapshotBtn.setPosition(xpos_imgFile, ypos_imgFile - getSnapshotBtn.getHeight()-10);
+  getSnapshotBtn.setPosition(xpos_imgFile, ypos_imgFile - getSnapshotBtn.getHeight()-10); 
   
   getRecentSnapBtn.setPosition(getSnapshotBtn.getX(),getSnapshotBtn.getY()-(btnHeight+10));
+  
+  resetBtn.setPosition(xpos_imgFile + imgSizeWidth + 10, ypos_imgFile);
   
   progress.setPosition(getSnapshotBtn.getX()+getSnapshotBtn.getWidth()+10, int(getSnapshotBtn.getY()+getSnapshotBtn.getHeight()/4));
   
@@ -199,6 +159,10 @@ void draw() {
   txtAConsole.setPosition(txtAConsole.getPosition()[0],getSnapshotBtn.getY());
   txtAConsole.setSize(txtAConsole.getWidth(), getSnapshotBtn.getHeight() + imgSizeHeight+5);
   
+  
+   /**********************************************************
+  ******************** TITLE *********************************
+  **********************************************************/
   textSize(32);
   text("Smartifi Console", txtAConsole.getPosition()[0], txtAConsole.getPosition()[1]-20); 
   fill(0, 102, 153, 51);
@@ -209,252 +173,125 @@ void draw() {
   if(keyPressed && key=='l') {
     txtAConsole.setLineHeight(mouseY);
   }
-  
-  
-  
-  // File transfer progress status
-  
+ 
+ /**********************************************************
+  ******************** PROGRESS BAR ************************
+  **********************************************************/
+ 
   totalFileSize = (totalFileSize == 0)?1:totalFileSize;
-  
+   
   if(imgRead){
-    if((millis()-timer)>=TIMEOUT){
+
+    if((millis()-timer)>TIMEOUT){
+      
+      int d_size = gwSerial.available();
+      if(d_size > 0){
+        
+        try{
+          imgWriter.write(gwSerial.readBytes(d_size));
+          imgWriter.flush();
+          currentFileSize += d_size;
+        }
+        catch(IOException e){
+          e.printStackTrace();
+          txtAConsole.setText(txtAConsole.getText()
+            + "Exception on serial read\n");
+        }
+        
+        
+        
+          
+        
+      }else{
       txtAConsole.setText(txtAConsole.getText()
                                    + "Gateway timeout on image transfer. Time: " + str(timer) + " ms\n"
                                    + "Received File size: "+str(currentFileSize)+" Total File Size: "+ str(totalFileSize)+"\n\n");
-      
-      try{
-         imgWriter.flush();
-         imgWriter.close();
-       }
-       catch(IOException e){
-         e.printStackTrace();
-         txtAConsole.setText(txtAConsole.getText()+
-                             "Exception generated on file close...\n");
-                            
-       }
                
       
           progress.setProgress(norm(currentFileSize, 0,totalFileSize));
           progressLbl.setLabel("Transfer Timeout Occurred! "+str(round(progress.getProgress()*100))+"%"+" File Size: "+str(float(totalFileSize/1024))+"kb or "+str(totalFileSize)+" bytes");
-    
-        
-        timer=0;
-        imgRead = false;
+       resetAll();
+      }
+       imgRead = false;
+
     }
-    else if((currentFileSize == totalFileSize)){
-      
-             try{
-               imgWriter.flush();
-               imgWriter.close();
-             }
-             catch(IOException e){
-               e.printStackTrace();
-               txtAConsole.setText(txtAConsole.getText()+
-                                   "Exception generated on file close...\n");
-                                   
-               imgRead = false;
-               return;
-             }
-             
+    
+    if((currentFileSize == totalFileSize)){
 
-             txtAConsole.setText(txtAConsole.getText()
-                                 +"Transfer complete. File: "+recvImgFileName + "\n");
-             try{
-               imgFile = loadImage(sketchPath() + "/" + recvImgFileName);
-               txtAConsole.setText(txtAConsole.getText()
-                                 + "New image width x height: "+str(imgFile.width)+" x " + str(imgFile.height)+ "\n\n");
-             }
-             catch(Exception e){
-                 e.printStackTrace();
-                 txtAConsole.setText(txtAConsole.getText()
-                               +"Could not load image... currentFileSize: "+currentFileSize + "\n\n");
-  
-                 imgFile = loadImage(sketchPath() +"/default.jpg");
-             }
-
-             imgRead = false;
       
       progress.setProgress(norm(currentFileSize, 0,totalFileSize));
       progressLbl.setLabel("Transfer Complete! "+str(round(progress.getProgress()*100))+"%"+" File Size: "+str(float(totalFileSize/1024))+"kb or "+str(totalFileSize)+" bytes");
+      
+      
+      closeImageTransfer();
+      imgRead = false;
+      
     }
     else{
         progress.setProgress(norm(currentFileSize, 0,totalFileSize));
         progressLbl.setLabel("Transfer Progress "+str(round(progress.getProgress()*100))+"%"+" File Size: "+str(float(totalFileSize/1024))+"kb or "+str(totalFileSize)+" bytes");
+        
+
     }
+    
+    
   }
   
   
-  // COMMAND PROCESSING
   
-  if(cmdComplete){
-    
-    if(!imgRead){
-    
-     cmdBuf.trim();
-     println("cmdBuf recv: " + cmdBuf.trim());
-     String[] m = match(cmdBuf.trim(), "AV\\+(.*?);");
-     
-     if(m != null) {
-       String[] tkn = splitTokens(m[1], ", ");
-       
-       if(match(tkn[0],"CS") != null){ 
-         
-         
-         
-           txtAConsole.setText(txtAConsole.getText()
-                        + "Connected to Camera Node\n");      // AV+CS,0x01;
-                        
-           if(match(tkn[1],"0x01") != null){
-             
-             txtAConsole.setText(txtAConsole.getText()
-                        + "Camera is active and ready to take snaps!\n\n"); 
-             
-           }
-           else{
-             
-             txtAConsole.setText(txtAConsole.getText()
-                        + "Camera is having problems... is it plugged in properly?\n"
-                        + "Press RESET on Camera Node after fixing\n\n");
-           }
-          
-       
-       }else if(match(tkn[0],"CTRANS") != null) {                           // AV+CTRANS,<img_file_size_in_bytes>;  Start image transfer
-         totalFileSize = int(tkn[1]);
-         txtAConsole.setText(txtAConsole.getText() + 
-                             "Getting Image...\n");
-                             
-         // Switch to reading image byte stream in Serial Event handler and start timeout timer
-         imgRead = true;
-         timer = millis();
-       
-       }else if(match(tkn[0],"DEBUG") != null){
-         
-         if(match(tkn[1],"TAKESNAP_SD") != null){
-           txtAConsole.setText(txtAConsole.getText()
-                               + "Snapshot taken!\n"
-                               + "Arduino filename: "+tkn[2]+" Filesize: "+tkn[3]+" bytes\n");
-           
-         }
-         
-       }
-      
-       println("Match: "+m[1]);
-     }
-    }
-     cmdComplete = false;
-     cmdBuf="";
-     
-  }
+  processSerialResponse();
+  
  
 }
 
-void sendGatewayCmd(String cmd){
+void serialEvent (Serial s){
   
-  gwSerial.write(cmd);
-  gwSerial.write(10); 
-
-}
-
-void createImageFile(){
-  
-  recvImgFileName = "IMAGE_";
-  recvImgFileName += String.valueOf(year());
-  recvImgFileName += String.valueOf(month());
-  recvImgFileName += String.valueOf(day());
-  recvImgFileName += "-";
-  recvImgFileName += String.valueOf(hour());
-  recvImgFileName += String.valueOf(minute());
-  recvImgFileName += ".jpg";
-  
-  imgWriter = createOutput(sketchPath()+"/"+recvImgFileName);
-  currentFileSize =0;
-  totalFileSize=0;
-  
-}
-
-void actionPerformed (GUIEvent e) {
-  
-  if (e.getSource() == getSnapshotBtn) {
-
-      txtAConsole.setText(txtAConsole.getText() 
-                          + "Waiting for image data...\n"
-                          + "Grab a coffee... this will take awhile..\n");
-      
-      createImageFile();
-      //sendGatewayCmd("AV+CGETS");
-      sendGatewayCmd("AV+SGETS");
-      
-      
-      
-
-  } 
-  
-  if(e.getSource() == getRecentSnapBtn){
-    
-    txtAConsole.setText(txtAConsole.getText() 
-                          + "Getting most recent image stored...\n");
-    createImageFile();                      
-    sendGatewayCmd("AV+CSEND");
-     
-  }
-}
-
-void serialEvent(Serial s){
-
     if(cmdComplete) return;
     
-    // If CTRANS command received, read byte stream until stream is completed.
-    
-    if(imgRead){
-      
-        // There is a delay because image is being saved to the SD card first then transmitted.
-        
-        if((totalFileSize-currentFileSize) > 0 ){
-            
-
-            
-            // Read stream data and output to jpg file
-            try{
-              
-              int bytesToRead = min(BUF_SIZE, (totalFileSize-currentFileSize));
-              byte[] buffer = new byte[bytesToRead];
-              
-              buffer = s.readBytes(bytesToRead);
-              imgWriter.write(buffer);
-              if(buffer.length > 0){                
-                timer = millis();
-              }
-              currentFileSize+=buffer.length;
-              buffer = null;
-
-            }
-            catch(IOException e){
-              e.printStackTrace();
-              txtAConsole.setText(txtAConsole.getText()
-                + "Exception on serial read\n");
-            }
-            
-            // Output a response every 128 bytes
-            if(((currentFileSize % 128) == 0) && currentFileSize > 20000){
-                      println("Current Filesize: "+str(currentFileSize)+" Buffer size: "+str(min(64, (totalFileSize-currentFileSize))) + "\n");
-              
-            }
-        }
-    
-   }
-   else{
+    if(!imgRead){
       char inChar = s.readChar();
       cmdBuf += str(inChar);
       
-      if(inChar == ';'){
+      if(inChar == ';' || inChar == '\n'){
           cmdComplete = true;   
       }
       
       if(cmdBuf.length() > 100){
         cmdBuf="";
+        s.clear();
       }
+    }
+    else{
+      if((currentFileSize<totalFileSize) && s.available() > 0){
         
-     
-   }
+        if(((currentFileSize % 128) == 0)){
+           println("Current Filesize: "+str(currentFileSize)+"\n");
+        }
+        
+        try{
+            
+            int d_size = s.available();
+            byte[] d = new byte[d_size];
+            
+            d = s.readBytes(d_size);
+            
+            imgWriter.write(d);
+            currentFileSize += d_size;
+            
+            timer = millis(); // Timer reset
+            
+            d = null;
+
+        }
+        catch(IOException e){
+          e.printStackTrace();
+          txtAConsole.setText(txtAConsole.getText()
+            + "Exception on serial read\n");
+        }
+          
+      }
+
+      
+    }
     
 }

@@ -1,61 +1,95 @@
-
-/***************************************************************
-* Gateway Node firmware
-*
-* @author Robbie Sharma robbie -at- rsconsulting.ca
-* @date August 21, 2017
-* @desc Before upload, flip switch to "USB" on the arduino Shield
-* 
-*  TODO:  Develop a simple protocol framework with handshaking
-*  for transmitting data between xBee modules and Server. 
-***************************************************************/
-
+#include <XBee.h>
+#include <Printers.h>
 #include <SoftwareSerial.h>
 
-// Incresae software serial maximum buffer size 
-#define _SS_MAX_RX_BUFF 256
-#define MAX_BUF_SIZE 64
 
-// RX,  TX
-SoftwareSerial xBeeSerial(A0,A1); //RX,TX
+
+XBeeWithCallbacks xbee;
+
+
+//XBeeResponse response = XBeeResponse();
+// create reusable response objects for responses we expect to handle 
+//ZBRxResponse rx = ZBRxResponse();
+
+char cmdBuf[25];
+uint8_t cmdidx = 0;
+bool cmdComplete =false;
+
+uint32_t _msb = 0x13A200;
+uint32_t _lsb = 0x415B894A;
+
+
+SoftwareSerial xss = SoftwareSerial(A0,A1);
+
+void zbCallback(ZBRxResponse& rx, uintptr_t){
+
+    for(uint8_t i=0; i < rx.getDataLength(); i++){
+      Serial.write((char)rx.getData()[i]);
+    }
+	
+	Serial.flush();
+	
+}
 
 void setup() {
   Serial.begin(57600);
-
   while(!Serial){
-    ;
+    
   }
 
-  Serial.println("USB Serial open...");
+  //xbee.onPacketError(printErrorCb, (uintptr_t)(Print*)&Serial);
+  //xbee.onTxStatusResponse(printErrorCb, (uintptr_t)(Print*)&Serial);
+  //xbee.onZBTxStatusResponse(printErrorCb, (uintptr_t)(Print*)&Serial);
+  xbee.onZBRxResponse(zbCallback);
   
-  xBeeSerial.begin(57600);
+  xbee.setSerial(xss);
+  xss.begin(57600);
 
+  Serial.println("Gateway started");
 }
 
 void loop() {
 
+    xbee.loop();
 
-  outputStream(xBeeSerial, Serial);
+   if(cmdComplete){
+      
+      XBeeAddress64 addr64 = XBeeAddress64(_msb, _lsb);
+      ZBTxRequest zbTx = ZBTxRequest(addr64, cmdBuf, cmdidx);
+      ZBTxStatusResponse txStatus = ZBTxStatusResponse();
 
-  outputStream(Serial,xBeeSerial);
- 
+      xbee.sendAndWait(zbTx,500);
+	  
+       // Reset command buffers
+      cmdidx = 0;
+      cmdComplete = false;
+  }
+
+  processSerial();
 }
 
 
-void outputStream(Stream &s_in, Stream &s_out){
 
-  uint8_t bytesToRead;
-  bytesToRead = s_in.available();
+
+void processSerial(){
+
+  int bytesAvail = Serial.available();
+
+  if(bytesAvail > 0){
   
-  if(bytesToRead > 0){
-    uint8_t *dataBuf;
-    dataBuf = new uint8_t[min(bytesToRead,MAX_BUF_SIZE)];
-    s_in.readBytes(dataBuf, bytesToRead);
-    for(int i=0; i<bytesToRead; i++){
-      s_out.write(dataBuf[i]);
+    for(int i = 0; i < bytesAvail; i++){
+      
+      char inChar = (char)Serial.read();
+      cmdBuf[cmdidx++] = inChar;
+
+      if(cmdidx >= sizeof(cmdBuf))
+        cmdidx=0;
+  
+      if(inChar == '\n'){
+        cmdComplete = true;
+      }
+      
     }
-    delete [] dataBuf;  
   }
   
 }
-

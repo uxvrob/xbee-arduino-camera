@@ -1,0 +1,479 @@
+{
+	"auto_complete":
+	{
+		"selected_items":
+		[
+			[
+				"send",
+				"sendPayload"
+			]
+		]
+	},
+	"buffers":
+	[
+		{
+			"file": "src/CameraNode/CameraNode-Firmware/CameraNode-Firmware.ino",
+			"settings":
+			{
+				"buffer_size": 2699,
+				"line_ending": "Windows"
+			}
+		},
+		{
+			"file": "src/CameraNode/CameraNode-Firmware/CameraNode.cpp",
+			"settings":
+			{
+				"buffer_size": 4774,
+				"encoding": "UTF-8",
+				"line_ending": "Windows"
+			}
+		},
+		{
+			"file": "src/CameraNode/CameraNode-Firmware/CameraNode.h",
+			"settings":
+			{
+				"buffer_size": 1012,
+				"line_ending": "Windows"
+			}
+		},
+		{
+			"file": "src/CameraNode/CameraNode-Firmware/Node.cpp",
+			"settings":
+			{
+				"buffer_size": 4590,
+				"line_ending": "Windows"
+			}
+		},
+		{
+			"file": "src/CameraNode/CameraNode-Firmware/Node.h",
+			"settings":
+			{
+				"buffer_size": 2637,
+				"encoding": "UTF-8",
+				"line_ending": "Unix"
+			}
+		},
+		{
+			"file": "src/GatewayNode/GatewayNode-Firmware/GatewayNode-Firmware.ino",
+			"settings":
+			{
+				"buffer_size": 1713,
+				"line_ending": "Windows"
+			}
+		},
+		{
+			"file": "lib/xbee-arduino/XBee.h",
+			"settings":
+			{
+				"buffer_size": 43862,
+				"line_ending": "Windows"
+			}
+		}
+	],
+	"build_system": "",
+	"build_system_choices":
+	[
+	],
+	"build_varint": "",
+	"command_palette":
+	{
+		"height": 38.0,
+		"last_filter": "Package Control: ",
+		"selected_items":
+		[
+			[
+				"Package Control: ",
+				"Package Control: Install Package"
+			]
+		],
+		"width": 392.0
+	},
+	"console":
+	{
+		"height": 0.0,
+		"history":
+		[
+		]
+	},
+	"distraction_free":
+	{
+		"menu_visible": true,
+		"show_minimap": false,
+		"show_open_files": false,
+		"show_tabs": false,
+		"side_bar_visible": false,
+		"status_bar_visible": false
+	},
+	"expanded_folders":
+	[
+		"/C/Users/Robbie/Dropbox/RS Consulting/Projects/Personal Projects/Smartifi - AVALON",
+		"/C/Users/Robbie/Dropbox/RS Consulting/Projects/Personal Projects/Smartifi - AVALON/lib",
+		"/C/Users/Robbie/Dropbox/RS Consulting/Projects/Personal Projects/Smartifi - AVALON/lib/xbee-arduino",
+		"/C/Users/Robbie/Dropbox/RS Consulting/Projects/Personal Projects/Smartifi - AVALON/src",
+		"/C/Users/Robbie/Dropbox/RS Consulting/Projects/Personal Projects/Smartifi - AVALON/src/GatewayNode",
+		"/C/Users/Robbie/Dropbox/RS Consulting/Projects/Personal Projects/Smartifi - AVALON/src/GatewayNode/GatewayNode-Firmware",
+		"/C/Users/Robbie/Dropbox/RS Consulting/Projects/Personal Projects/Smartifi - AVALON/src/GUI"
+	],
+	"file_history":
+	[
+		"/C/Users/Robbie/GitRepos/inanibus/#bldc-driver-project/CODE/qssi.c",
+		"/D/GD/MAGD-AHRS/Code/Keil/KARTIK/BLDC/BLDC_driver.sublime-project",
+		"/D/GD/MAGD-AHRS/Code/Keil/KARTIK/BLDC/RTE/Device/TM4C1294NCPDT/system_TM4C129.c",
+		"/D/GD/MAGD-AHRS/Code/Keil/KARTIK/BLDC/gpio.c",
+		"/D/GD/MAGD-AHRS/Code/Keil/KARTIK/BLDC/gpio.h",
+		"/D/GD/MAGD-AHRS/Code/Keil/KARTIK/BLDC/adc.c",
+		"/D/GD/MAGD-AHRS/Code/Keil/KARTIK/BLDC/adc.h",
+		"/D/GD/MAGD-AHRS/Code/Keil/KARTIK/BLDC/pwm.c",
+		"/D/GD/MAGD-AHRS/Code/Keil/KARTIK/BLDC/pwm.h",
+		"/D/GD/MAGD-AHRS/Code/Keil/KARTIK/BLDC/qssi.c",
+		"/D/GD/MAGD-AHRS/Code/Keil/KARTIK/BLDC/qssi.h",
+		"/D/GD/MAGD-AHRS/Code/Keil/KARTIK/BLDC/drv8301_3.c",
+		"/D/GD/MAGD-AHRS/Code/Keil/KARTIK/BLDC/drv8301_3.h",
+		"/D/GD/MAGD-AHRS/Code/Keil/KARTIK/BLDC/watchdog.c",
+		"/D/GD/MAGD-AHRS/Code/Keil/KARTIK/BLDC/watchdog.h"
+	],
+	"find":
+	{
+		"height": 41.0
+	},
+	"find_in_files":
+	{
+		"height": 0.0,
+		"where_history":
+		[
+		]
+	},
+	"find_state":
+	{
+		"case_sensitive": false,
+		"find_history":
+		[
+			"reset",
+			"camNode.",
+			"AV+ERR",
+			"thermistor_constants",
+			"thermistor",
+			"CAN0",
+			"CANCTL",
+			"CAN0_Type",
+			"SSI0_Type",
+			"CAN0_Type",
+			"GPIOA_AHB"
+		],
+		"highlight": true,
+		"in_selection": false,
+		"preserve_case": false,
+		"regex": false,
+		"replace_history":
+		[
+			"camNode->"
+		],
+		"reverse": false,
+		"show_context": true,
+		"use_buffer2": true,
+		"whole_word": false,
+		"wrap": true
+	},
+	"folders":
+	[
+		{
+			"path": "C:\\Users\\Robbie\\Dropbox\\RS Consulting\\Projects\\Personal Projects\\Smartifi - AVALON"
+		}
+	],
+	"groups":
+	[
+		{
+			"selected": 4,
+			"sheets":
+			[
+				{
+					"buffer": 0,
+					"file": "src/CameraNode/CameraNode-Firmware/CameraNode-Firmware.ino",
+					"semi_transient": false,
+					"settings":
+					{
+						"buffer_size": 2699,
+						"regions":
+						{
+						},
+						"selection":
+						[
+							[
+								430,
+								430
+							]
+						],
+						"settings":
+						{
+							"syntax": "Packages/C++/C++.sublime-syntax",
+							"tab_size": 2,
+							"translate_tabs_to_spaces": true
+						},
+						"translation.x": 0.0,
+						"translation.y": 117.0,
+						"zoom_level": 1.0
+					},
+					"stack_index": 5,
+					"type": "text"
+				},
+				{
+					"buffer": 1,
+					"file": "src/CameraNode/CameraNode-Firmware/CameraNode.cpp",
+					"semi_transient": false,
+					"settings":
+					{
+						"buffer_size": 4774,
+						"regions":
+						{
+						},
+						"selection":
+						[
+							[
+								3255,
+								3255
+							]
+						],
+						"settings":
+						{
+							"syntax": "Packages/C++/C++.sublime-syntax",
+							"tab_size": 2,
+							"translate_tabs_to_spaces": true
+						},
+						"translation.x": 0.0,
+						"translation.y": 1484.0,
+						"zoom_level": 1.0
+					},
+					"stack_index": 4,
+					"type": "text"
+				},
+				{
+					"buffer": 2,
+					"file": "src/CameraNode/CameraNode-Firmware/CameraNode.h",
+					"semi_transient": false,
+					"settings":
+					{
+						"buffer_size": 1012,
+						"regions":
+						{
+						},
+						"selection":
+						[
+							[
+								1012,
+								1012
+							]
+						],
+						"settings":
+						{
+							"syntax": "Packages/C++/C++.sublime-syntax"
+						},
+						"translation.x": 0.0,
+						"translation.y": 0.0,
+						"zoom_level": 1.0
+					},
+					"stack_index": 3,
+					"type": "text"
+				},
+				{
+					"buffer": 3,
+					"file": "src/CameraNode/CameraNode-Firmware/Node.cpp",
+					"semi_transient": false,
+					"settings":
+					{
+						"buffer_size": 4590,
+						"regions":
+						{
+						},
+						"selection":
+						[
+							[
+								526,
+								526
+							]
+						],
+						"settings":
+						{
+							"syntax": "Packages/C++/C++.sublime-syntax",
+							"tab_size": 2,
+							"translate_tabs_to_spaces": true
+						},
+						"translation.x": 0.0,
+						"translation.y": 39.0,
+						"zoom_level": 1.0
+					},
+					"stack_index": 6,
+					"type": "text"
+				},
+				{
+					"buffer": 4,
+					"file": "src/CameraNode/CameraNode-Firmware/Node.h",
+					"semi_transient": false,
+					"settings":
+					{
+						"buffer_size": 2637,
+						"regions":
+						{
+						},
+						"selection":
+						[
+							[
+								1445,
+								1445
+							]
+						],
+						"settings":
+						{
+							"syntax": "Packages/C++/C++.sublime-syntax"
+						},
+						"translation.x": 0.0,
+						"translation.y": 429.0,
+						"zoom_level": 1.0
+					},
+					"stack_index": 0,
+					"type": "text"
+				},
+				{
+					"buffer": 5,
+					"file": "src/GatewayNode/GatewayNode-Firmware/GatewayNode-Firmware.ino",
+					"semi_transient": false,
+					"settings":
+					{
+						"buffer_size": 1713,
+						"regions":
+						{
+						},
+						"selection":
+						[
+							[
+								551,
+								551
+							]
+						],
+						"settings":
+						{
+							"syntax": "Packages/C++/C++.sublime-syntax",
+							"tab_size": 2,
+							"translate_tabs_to_spaces": true
+						},
+						"translation.x": 0.0,
+						"translation.y": 0.0,
+						"zoom_level": 1.0
+					},
+					"stack_index": 1,
+					"type": "text"
+				},
+				{
+					"buffer": 6,
+					"file": "lib/xbee-arduino/XBee.h",
+					"semi_transient": false,
+					"settings":
+					{
+						"buffer_size": 43862,
+						"regions":
+						{
+						},
+						"selection":
+						[
+							[
+								26834,
+								26834
+							]
+						],
+						"settings":
+						{
+							"syntax": "Packages/C++/C++.sublime-syntax",
+							"translate_tabs_to_spaces": false
+						},
+						"translation.x": 0.0,
+						"translation.y": 1795.0,
+						"zoom_level": 1.0
+					},
+					"stack_index": 2,
+					"type": "text"
+				}
+			]
+		}
+	],
+	"incremental_find":
+	{
+		"height": 21.0
+	},
+	"input":
+	{
+		"height": 0.0
+	},
+	"layout":
+	{
+		"cells":
+		[
+			[
+				0,
+				0,
+				1,
+				1
+			]
+		],
+		"cols":
+		[
+			0.0,
+			1.0
+		],
+		"rows":
+		[
+			0.0,
+			1.0
+		]
+	},
+	"menu_visible": true,
+	"output.find_results":
+	{
+		"height": 0.0
+	},
+	"pinned_build_system": "",
+	"project": "",
+	"replace":
+	{
+		"height": 73.0
+	},
+	"save_all_on_build": true,
+	"select_file":
+	{
+		"height": 0.0,
+		"last_filter": "",
+		"selected_items":
+		[
+		],
+		"width": 0.0
+	},
+	"select_project":
+	{
+		"height": 0.0,
+		"last_filter": "",
+		"selected_items":
+		[
+		],
+		"width": 0.0
+	},
+	"select_symbol":
+	{
+		"height": 0.0,
+		"last_filter": "",
+		"selected_items":
+		[
+		],
+		"width": 0.0
+	},
+	"selected_group": 0,
+	"settings":
+	{
+	},
+	"show_minimap": true,
+	"show_open_files": true,
+	"show_tabs": true,
+	"side_bar_visible": true,
+	"side_bar_width": 362.0,
+	"status_bar_visible": true,
+	"template_settings":
+	{
+	}
+}
