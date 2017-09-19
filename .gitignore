@@ -29,6 +29,7 @@ _ReSharper*/
 [Tt]est[Rr]esult*
 #Files to ignore
 Smartifi_overview*.docx
+lib/xbee-arduino/
 lib/pyExamples/
 IMAGE*.jpg
 lib/CmdMessenger-3.6.zip
