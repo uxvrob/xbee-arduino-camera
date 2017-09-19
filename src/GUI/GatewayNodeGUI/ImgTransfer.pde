@@ -32,6 +32,18 @@ void saveImageFile(){
   
 }
 
+void deleteImageFile(){
+  
+     File f = new File(sketchPath()+"/"+recvImgFileName); 
+   if(f.exists()){
+     f.delete();
+     println("Deleted image file");
+   }
+   else
+     println("could not delete image file");
+  
+}
+
 void closeImageTransfer(){
   
         saveImageFile();
@@ -52,69 +64,4 @@ void closeImageTransfer(){
              imgFile = loadImage(sketchPath() +"/default.jpg");
          }
   
-}
-
-void processImgInput(){    
-
-    createImageFile(); 
-    // LOOP UNTIL ENTIRE FILE IS READ
-    
-    imgRead = true;
-    cmdComplete = false;
-    
-    timer = millis();
-    currentFileSize =0;
-
-    while((currentFileSize<=totalFileSize)){
-
-        // Output a response every 128 bytes
-        if(((currentFileSize % 128) == 0)){
-           println("Current Filesize: "+str(currentFileSize)+"\n");
-           timer = millis();
-        }
-        
-        if(resetFlag ) return;
-        
-        if((millis()-timer)>TIMEOUT) {
-          
-          txtAConsole.setText(txtAConsole.getText()
-                                 +"Transfer timeout!\n");
-          
-          resetAll();
-          return;
-        }
-         
-    }
-    
-    saveImageFile();
-   
-    if(currentFileSize == totalFileSize){
-      println("Image receipt successful!!");
-
-      txtAConsole.setText(txtAConsole.getText()
-                                 +"Transfer complete. File: " + recvImgFileName + "\n");
-       try{
-         imgFile = loadImage(sketchPath() + "/" + recvImgFileName);
-         txtAConsole.setText(txtAConsole.getText()
-                           + "New image width x height: "+str(imgFile.width)+" x " + str(imgFile.height)+ "\n\n");
-       }
-       catch(Exception e){
-           e.printStackTrace();
-           txtAConsole.setText(txtAConsole.getText()
-                         +"Could not load image... currentFileSize: "+currentFileSize + "\n\n");
-  
-           imgFile = loadImage(sketchPath() +"/default.jpg");
-       }
-    }
-    else{
-      
-      println("Image size not good.  currentFileSize: ");
-      txtAConsole.setText(txtAConsole.getText()
-                                 +"Transfer problems.  Missing " + (totalFileSize - currentFileSize) + " bytes...\n");
-      
-    }
-
-    imgRead = false;
-    return;
-
 }

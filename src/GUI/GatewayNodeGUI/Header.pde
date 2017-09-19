@@ -1,6 +1,7 @@
 import controlP5.*;
 import interfascia.*;
 import processing.serial.*;
+import java.io.File;
 
 // Serial parameters
 /********************************************************************
@@ -31,7 +32,7 @@ final int imgSizeHeight = 480;
 
 // Image streaming timeout
 
-final int TIMEOUT = 10000;  // in milliseconds (ms)
+final int TIMEOUT = 3000;  // in milliseconds (ms)
 
 // GUI Controls - Interfascia
 GUIController c;
@@ -54,6 +55,7 @@ Textarea txtAConsole;
 String cmdBuf = "";
 boolean cmdComplete = false;
 boolean imgRead;
+boolean sdSave;
 
 // Snapshot Image File Parameters
 

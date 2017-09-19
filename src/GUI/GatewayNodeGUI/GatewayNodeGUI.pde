@@ -183,6 +183,26 @@ void draw() {
   if(imgRead){
 
     if((millis()-timer)>TIMEOUT){
+      
+      int d_size = gwSerial.available();
+      if(d_size > 0){
+        
+        try{
+          imgWriter.write(gwSerial.readBytes(d_size));
+          imgWriter.flush();
+          currentFileSize += d_size;
+        }
+        catch(IOException e){
+          e.printStackTrace();
+          txtAConsole.setText(txtAConsole.getText()
+            + "Exception on serial read\n");
+        }
+        
+        
+        
+          
+        
+      }else{
       txtAConsole.setText(txtAConsole.getText()
                                    + "Gateway timeout on image transfer. Time: " + str(timer) + " ms\n"
                                    + "Received File size: "+str(currentFileSize)+" Total File Size: "+ str(totalFileSize)+"\n\n");
@@ -191,10 +211,12 @@ void draw() {
           progress.setProgress(norm(currentFileSize, 0,totalFileSize));
           progressLbl.setLabel("Transfer Timeout Occurred! "+str(round(progress.getProgress()*100))+"%"+" File Size: "+str(float(totalFileSize/1024))+"kb or "+str(totalFileSize)+" bytes");
        resetAll();
+      }
        imgRead = false;
 
     }
-    else if((currentFileSize == totalFileSize)){
+    
+    if((currentFileSize == totalFileSize)){
 
       
       progress.setProgress(norm(currentFileSize, 0,totalFileSize));
@@ -209,7 +231,10 @@ void draw() {
         progress.setProgress(norm(currentFileSize, 0,totalFileSize));
         progressLbl.setLabel("Transfer Progress "+str(round(progress.getProgress()*100))+"%"+" File Size: "+str(float(totalFileSize/1024))+"kb or "+str(totalFileSize)+" bytes");
         
-        //gwSerial.buffer(min((totalFileSize-currentFileSize),BUF_SIZE));
+        if((totalFileSize-currentFileSize)>BUF_SIZE*2)
+          gwSerial.buffer(BUF_SIZE);
+        else
+          gwSerial.buffer(1);
     }
     
     

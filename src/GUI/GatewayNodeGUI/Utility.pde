@@ -62,6 +62,10 @@ void resetAll(){
     cmdComplete=false;
 
    saveImageFile();
+   
+  
+  deleteImageFile();
+
  
    gwSerial.stop();
    gwSerial = null;
