@@ -5,9 +5,9 @@
     <description_file>xb24c-dm-th_9000.xml</description_file>
     <settings>
       <setting command="CH">C</setting>
-      <setting command="ID">7FFF</setting>
+      <setting command="ID">D161</setting>
       <setting command="MT">3</setting>
-      <setting command="PL">4</setting>
+      <setting command="PL">0</setting>
       <setting command="PM">1</setting>
       <setting command="RR">A</setting>
       <setting command="CA">0</setting>
@@ -20,17 +20,17 @@
       <setting command="DH">0</setting>
       <setting command="DL">FFFF</setting>
       <setting command="TO">C0</setting>
-      <setting command="NI">0x20</setting>
+      <setting command="NI">XBEE_CAMERA</setting>
       <setting command="NT">82</setting>
       <setting command="NO">0</setting>
       <setting command="CI">11</setting>
       <setting command="EE">0</setting>
       <setting command="KY"></setting>
-      <setting command="BD">3</setting>
+      <setting command="BD">6</setting>
       <setting command="NB">0</setting>
       <setting command="RO">3</setting>
       <setting command="FT">51</setting>
-      <setting command="AP">0</setting>
+      <setting command="AP">2</setting>
       <setting command="AO">0</setting>
       <setting command="D0">1</setting>
       <setting command="D1">0</setting>
