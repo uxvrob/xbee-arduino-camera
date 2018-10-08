@@ -121,13 +121,30 @@ alt="GatewayNode Shield Wiring" width="50%" height="50%" border="10" />
 9. This confirms a successful serial connection between both xBee devices
 
 
-
 ## Running the tests
 
 
 ## Deployment
 
 Add additional notes about how to deploy this on a live system
+
+### ERROR Codes
+
+| Command | Description | Parameter 1 |
+| ---------| ------------| ------------| 
+| ON	| Node is turned on |	SL based node_id (SL)|
+| ERR	|Error code from node	|Error code |
+| CS	|Camera Status	|Camera status code |
+| CSV	| Camera Version |	Camera version string |
+| CIS	|Camera IMG Size	| |
+| CTRANS |	Camera send snapshot |	Image Size/length|
+| CGETS	| Get Snapshot	|
+
+|SD Error codes	| Description	|	Camera Status codes|	Description |
+| ---------| ------------| ------------| ------------| 
+|0x01 |	SD Card not present |		0x00 |	Camera is not found|
+|0x02	|Snapshot failed	|	0x01	|Camera is on and communicating|
+
 
 ## Built With
 
