@@ -73,7 +73,6 @@ void _zbRxCb(ZBRxResponse& rx, uintptr_t){
 	
   }else if(cmdBuf.equals("AV+JRES")){   // Print ROK
   // Command to reset the arduino.  NOT IMPLEMENTED YET.
-  
     Serial.println(F("ROK"));
   
   }else if(cmdBuf.indexOf(',') != -1){  // Further parsing of commands with ',' delimeters

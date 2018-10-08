@@ -2,21 +2,16 @@
 #include <Printers.h>
 #include <SoftwareSerial.h>
 
-
+#define CAMERA_SH_ADDR 0x13A200
+#define CAMERA_SL_ADDR 0x415B894A
 
 XBeeWithCallbacks xbee;
 
-
-//XBeeResponse response = XBeeResponse();
-// create reusable response objects for responses we expect to handle 
-//ZBRxResponse rx = ZBRxResponse();
 
 char cmdBuf[25];
 uint8_t cmdidx = 0;
 bool cmdComplete =false;
 
-uint32_t _msb = 0x13A200;
-uint32_t _lsb = 0x415B894A;
 
 
 SoftwareSerial xss = SoftwareSerial(A0,A1);
@@ -54,7 +49,7 @@ void loop() {
 
    if(cmdComplete){
       
-      XBeeAddress64 addr64 = XBeeAddress64(_msb, _lsb);
+      XBeeAddress64 addr64 = XBeeAddress64(CAMERA_SH_ADDR, CAMERA_SL_ADDR);
       ZBTxRequest zbTx = ZBTxRequest(addr64, cmdBuf, cmdidx);
       ZBTxStatusResponse txStatus = ZBTxStatusResponse();
 

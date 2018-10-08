@@ -15,10 +15,6 @@
 #include <SoftwareSerial.h>
 #include <Adafruit_VC0706.h>
 
-#define CAM_RX_PIN 2
-#define CAM_TX_PIN 3
-
-
 typedef struct {
   char szName[15];
   uint16_t uSize;
