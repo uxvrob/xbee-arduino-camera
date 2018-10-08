@@ -1,7 +1,8 @@
 
-#ignore thumbnails created by windows
+# ignore thumbnails created by windows
 Thumbs.db
-#Ignore files build by Visual Studio
+
+# Ignore files build by Visual Studio
 *.obj
 *.exe
 *.pdb
@@ -19,6 +20,7 @@ Thumbs.db
 *.cache
 *.ilk
 *.log
+*.zip
 [Bb]in
 [Dd]ebug*/
 *.lib
@@ -27,7 +29,8 @@ obj/
 [Rr]elease*/
 _ReSharper*/
 [Tt]est[Rr]esult*
-#Files to ignore
+
+# Files to ignore
 Smartifi_overview*.docx
 lib/xbee-arduino/
 lib/pyExamples/
@@ -35,3 +38,7 @@ IMAGE*.jpg
 lib/CmdMessenger-3.6.zip
 ~$alon.Manual.Rev00.docx
 lib/xbee-arduino
+files-uncommitted/*
+
+# Workspace files
+*.sublime-workspace
