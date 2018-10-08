@@ -55,41 +55,75 @@ alt="GatewayNode Shield Wiring" width="50%" height="50%" border="10" />
 
 ### Installing
 
-A step by step series of examples that tell you how to get a development env running
+#### xBee Configuration 
 
-Say what the step will be
+1. Ensure the “Serial Select” switch is at USB on both Arduino Wireless SD shields.  
+  a. When the “Serial Select” switch is set to USB, the xBee will communicate through the USB-FTDI chip via its RX, TX lines.  When it is set to “micro”. The RX, TX lines of the xBee are tied to the TX, RX lines of the Arduino Uno respectively.  This is called “Serial Hijacking”.  
+  
+2. Open the Arduino IDE and go to File->Basics->Bare Minimum.  
 
-```
-Give the example
-```
+3. Upload the code to GatewayNode and CameraNode Arduinos.  
+  a. This ensures that there is no Arduino interference for when the xBee’s are configured.  
+  
+4. Go to https://www.digi.com/resources/documentation/digidocs/90001526/default.htm  
 
-And repeat
+5. Follow the guide to download, install and configure the XBEE modules using XCTU.    
+  a. DigiMesh 2.4 TH should be the installed firmware  
+  b. XBEE_A should be GatewayNode  
+  c. XBEE_B should be CameraNode  
 
-```
-until finished
-```
 
-End with an example of getting some data out of the system or using it for a little demo
+| Parameter |	Description |	GatewayNode |	CameraNode |
+| ---------| ------------| ------------| ------------| 
+| ID | Network ID |	D161	| D161 | 
+| DH |	Destination Address HIGH |	0013A200 |	0013A200 | 
+| DL |	Destination Address LOW	| SL of CameraNode | SL of GatewayNode | 
+| NI | Node Identifier | GatewayNode	CameraNode | 
+| PL | TX Power Level | 0 |	0 | 
+| BD |	Baud Rate |	115200 | 115200 | 
+| Arduino_SN | 	xBee Serial | 	55635303838351319170 | 	5563530383835161B131 | 
+
+#### Basic Communication Test
+
+1. Ensure the “Serial Select” switch is at USB on both Arduino Wireless SD shields.  
+
+2. Open “gatewayNode-basic-comm-test.ino”  
+
+3. Upload to GatewayNode on the CORRECT COM port  
+  a. Ensure the correct COM port is selected if both Arduino’s are plugged in via USB  
+
+4. Open “cameraNode-basic-comm-test.ino”  
+
+5. Upload to CameraNode device  
+  a. Ensure the correct COM port is selected if both Arduino’s are plugged in via USB  
+  
+6. Switch “Serial Select” to “Micro” on BOTH Arduino Wireless SD Shields  
+
+7. Open Serial monitor on “CameraNode” COM Port (Check Arduino SN)  
+  a. Output should be:  
+      i. Hello World  
+    
+8. Open Serial monitor on “GatewayNode” COM port (Check Arduino SN)  
+  a. Output should be:  
+      i. RX: H  
+     ii. RX: e  
+     iii. RX: l  
+     iv. RX: l  
+     v. RX: o  
+    vi. RX:  
+    vii. RX: W  
+    viii.	RX: o  
+    ix.	RX: r  
+    x. RX: l  
+    xi. RX: d  
+    xii. RX:   
+
+9. This confirms a successful serial connection between both xBee devices
+
+
 
 ## Running the tests
 
-Explain how to run the automated tests for this system
-
-### Break down into end to end tests
-
-Explain what these tests test and why
-
-```
-Give an example
-```
-
-### And coding style tests
-
-Explain what these tests test and why
-
-```
-Give an example
-```
 
 ## Deployment
 
@@ -103,7 +137,7 @@ Add additional notes about how to deploy this on a live system
 
 ## Contributing
 
-Please read [CONTRIBUTING.md](https://gist.github.com/PurpleBooth/b24679402957c63ec426) for details on our code of conduct, and the process for submitting pull requests to us.
+Please read [CONTRIBUTING.md](CONTRIBUTING.md) for details on our code of conduct, and the process for submitting pull requests to us.
 
 ## Authors
 
