@@ -1,4 +1,7 @@
 # Avalon
+<img src="sch/PrototypeView.jpg" 
+alt="Avalon Prototype" width="50%" height="50%" border="10" />
+
 Camera xBee-Arduino wireless transceiver that communicates with a xBee-Arduino wireless gateway interfaced by USB-Serial to a Processing GUI to control camera snapshots and image transmission.
 
 ## Getting Started
@@ -8,22 +11,46 @@ These instructions will get you a copy of the project up and running on your loc
 ### Prerequisites
 
 #### Hardware
-*2 x Arduino UNO (https://store.arduino.cc/usa/arduino-uno-rev3)
-*2 x Arduino Wireless SD Shield - RETIRED (https://store.arduino.cc/usa/arduino-wirelss-sd-shield)
-*2 x xBee S2C (Datasheet: https://www.digi.com/resources/documentation/digidocs/pdfs/90002002.pdf)
-*1 x 3 wire CMOS Camera Module - 728x488 (https://www.sparkfun.com/products/11745)
-*2 x 9V battery connector
-*Jumper Wire
-*1 x USB Cable
+* 2 x Arduino UNO (https://store.arduino.cc/usa/arduino-uno-rev3)
+* 2 x Arduino Wireless SD Shield - RETIRED (https://store.arduino.cc/usa/arduino-wirelss-sd-shield)
+* 2 x xBee S2C (Datasheet: https://www.digi.com/resources/documentation/digidocs/pdfs/90002002.pdf)
+* 1 x Adafruit TTL Serial JPEG Camera (https://www.adafruit.com/product/397)
+* 2 x 9V battery connector
+* Jumper Wire
+* 1 x USB Cable
 
 #### Software
 
-*Arduino IDE (https://www.arduino.cc/en/Main/Software)
-*XCTU (https://www.digi.com/products/xbee-rf-solutions/xctu-software/xctu)
-*Processing IDE (https://processing.org/download/)
+* Arduino IDE (https://www.arduino.cc/en/Main/Software)
+* XCTU (https://www.digi.com/products/xbee-rf-solutions/xctu-software/xctu)
+* Processing IDE (https://processing.org/download/)
 
 ### Building
 
+#### Camera module
+
+<img src="sch/CameraModule-Connection-Wiring.jpg" 
+alt="Camera Module Connection Wiring" width="50%" height="50%" border="10" />
+
+Build this module with this tutorial: https://learn.adafruit.com/ttl-serial-camera/
+
+#### Camera Node
+##### Top View
+<img src="sch/CameraNode-TopView.jpg" 
+alt="CameraNode Top View" width="50%" height="50%" border="10" />
+
+##### Bottom View
+<img src="sch/CameraNode-Shield-BottomView.jpg" 
+alt="CameraNode Shield Wiring" width="50%" height="50%" border="10" />
+
+#### Gateway Node
+##### Top View
+<img src="sch/GatewayNode-TopView.jpg" 
+alt="GatewayNode TopView" width="50%" height="50%" border="10" />
+
+##### Bottom View
+<img src="sch/GatewayNode-Shield-BottomView.jpg" 
+alt="GatewayNode Shield Wiring" width="50%" height="50%" border="10" />
 
 
 ### Installing
@@ -80,7 +107,7 @@ Please read [CONTRIBUTING.md](https://gist.github.com/PurpleBooth/b24679402957c6
 
 ## Authors
 
-* **Robbie Sharma** - [PurpleBooth](https://github.com/PurpleBooth)
+* **Robbie Sharma** - (http://github.com/uxvrob)
 
 ## License
 
