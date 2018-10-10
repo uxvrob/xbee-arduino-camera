@@ -1,4 +1,4 @@
-# Avalon
+# xbee-arduino-camera
 <img src="sch/PrototypeView.jpg" 
 alt="Avalon Prototype" width="50%" height="50%" border="10" />
 
