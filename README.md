@@ -21,20 +21,26 @@ These instructions will get you a copy of the project up and running on your loc
 
 #### Software
 
+Please install the following
+
 * Arduino IDE (https://www.arduino.cc/en/Main/Software)
 * XCTU (https://www.digi.com/products/xbee-rf-solutions/xctu-software/xctu)
 * Processing IDE (https://processing.org/download/)
 
 ### Building
 
-#### Camera module
+#### Camera Module
+
+Build this module with this tutorial: https://learn.adafruit.com/ttl-serial-camera/
 
 <img src="sch/CameraModule-Connection-Wiring.jpg" 
 alt="Camera Module Connection Wiring" width="50%" height="50%" border="10" />
 
-Build this module with this tutorial: https://learn.adafruit.com/ttl-serial-camera/
 
 #### Camera Node
+
+TODO: Add Arduino pin maps for wiring.  For now just reference the pictures for proper wiring purposes :)
+
 ##### Top View
 <img src="sch/CameraNode-TopView.jpg" 
 alt="CameraNode Top View" width="50%" height="50%" border="10" />
@@ -53,9 +59,11 @@ alt="GatewayNode TopView" width="50%" height="50%" border="10" />
 alt="GatewayNode Shield Wiring" width="50%" height="50%" border="10" />
 
 
-### Installing
+## Deployment
 
-#### xBee Configuration 
+### xBee Configuration 
+
+Example xBee configuration profiles found in 
 
 1. Ensure the “Serial Select” switch is at USB on both Arduino Wireless SD shields.  
   a. When the “Serial Select” switch is set to USB, the xBee will communicate through the USB-FTDI chip via its RX, TX lines.  When it is set to “micro”. The RX, TX lines of the xBee are tied to the TX, RX lines of the Arduino Uno respectively.  This is called “Serial Hijacking”.  
@@ -67,7 +75,7 @@ alt="GatewayNode Shield Wiring" width="50%" height="50%" border="10" />
   
 4. Go to https://www.digi.com/resources/documentation/digidocs/90001526/default.htm  
 
-5. Follow the guide to download, install and configure the XBEE modules using XCTU.    
+5. Follow the guide to download, install and configure the xBee modules using XCTU.    
   a. DigiMesh 2.4 TH should be the installed firmware  
   b. XBEE_A should be GatewayNode  
   c. XBEE_B should be CameraNode  
@@ -85,19 +93,16 @@ alt="GatewayNode Shield Wiring" width="50%" height="50%" border="10" />
 
 
 
-
-## Running the tests
-
-### Basic Communication
+### Basic Communication Test
 
 1. Ensure the “Serial Select” switch is at USB on both Arduino Wireless SD shields.  
 
-2. Open “tests/BASIC COMM TEST/gatewayNode-basic-comm-test/gatewayNode-basic-comm-test.ino”  
+2. Open with Arduino IDE “tests/BASIC COMM TEST/gatewayNode-basic-comm-test/gatewayNode-basic-comm-test.ino”  
 
 3. Upload to GatewayNode on the CORRECT COM port  
   a. Ensure the correct COM port is selected if both Arduino’s are plugged in via USB  
 
-4. Open “tests/BASIC COMM TEST/cameraNode-basic-comm-test/cameraNode-basic-comm-test.ino”  
+4. Open with Arduino IDE “tests/BASIC COMM TEST/cameraNode-basic-comm-test/cameraNode-basic-comm-test.ino”  
 
 5. Upload to CameraNode device  
   a. Ensure the correct COM port is selected if both Arduino’s are plugged in via USB  
@@ -126,11 +131,29 @@ alt="GatewayNode Shield Wiring" width="50%" height="50%" border="10" />
 9. This confirms a successful serial connection between both xBee devices
 
 
-## Deployment
+### Running the setup
 
-Add additional notes about how to deploy this on a live system
+1. Ensure the “Serial Select” switch is at USB on both Arduino Wireless SD shields.  
 
-### ERROR Codes
+2. Open with Arduino IDE “src/GatewayNode/GatewayNode-Firmware/GatewayNode-Firmware.ino”  
+
+3. Upload to GatewayNode on the CORRECT COM port  
+  a. Ensure the correct COM port is selected if both Arduino’s are plugged in via USB  
+
+4. Open with Arduino IDE “src/CameraNode/CameraNode-Firmware/CameraNode-Firmware.ino”  
+
+5. Upload to CameraNode device  
+  a. Ensure the correct COM port is selected if both Arduino’s are plugged in via USB  
+  
+6. Switch “Serial Select” to “Micro” on BOTH Arduino Wireless SD Shields
+
+7. Open with Processing IDE "src/GUI/GatewayNodeGUI/GatewayNodeGUI.pde"
+
+8. Click 'Run' to launch GUI
+
+## Commands and Error Codes
+
+Byte string commands and error codes used in node communications and status reporting.
 
 | Command | Description | Parameter 1 |
 | ---------| ------------| ------------| 
@@ -153,10 +176,6 @@ Add additional notes about how to deploy this on a live system
 * [Arduino IDE](https://www.arduino.cc/) - The Arduino IDE used to program Arduino UNO
 * [xBee](https://www.digi.com/) - Wireless Transceiver 
 * [Processing](https://processing.org/) - Used to create GUI
-
-## Contributing
-
-Please read [CONTRIBUTING.md](CONTRIBUTING.md) for details on our code of conduct, and the process for submitting pull requests to us.
 
 ## Authors
 
