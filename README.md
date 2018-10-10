@@ -83,16 +83,21 @@ alt="GatewayNode Shield Wiring" width="50%" height="50%" border="10" />
 | BD |	Baud Rate |	115200 | 115200 | 
 | Arduino_SN | 	xBee Serial | 	55635303838351319170 | 	5563530383835161B131 | 
 
-#### Basic Communication Test
+
+
+
+## Running the tests
+
+### Basic Communication
 
 1. Ensure the “Serial Select” switch is at USB on both Arduino Wireless SD shields.  
 
-2. Open “gatewayNode-basic-comm-test.ino”  
+2. Open “tests/BASIC COMM TEST/gatewayNode-basic-comm-test/gatewayNode-basic-comm-test.ino”  
 
 3. Upload to GatewayNode on the CORRECT COM port  
   a. Ensure the correct COM port is selected if both Arduino’s are plugged in via USB  
 
-4. Open “cameraNode-basic-comm-test.ino”  
+4. Open “tests/BASIC COMM TEST/cameraNode-basic-comm-test/cameraNode-basic-comm-test.ino”  
 
 5. Upload to CameraNode device  
   a. Ensure the correct COM port is selected if both Arduino’s are plugged in via USB  
@@ -119,9 +124,6 @@ alt="GatewayNode Shield Wiring" width="50%" height="50%" border="10" />
     xii. RX:   
 
 9. This confirms a successful serial connection between both xBee devices
-
-
-## Running the tests
 
 
 ## Deployment
